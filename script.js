@@ -95,6 +95,13 @@ let products = JSON.parse(localStorage.getItem("oban-products"));
 if (!products || !products.length || !products.some(p => p && p.code)) {
   products = JSON.parse(JSON.stringify(defaultInventory));
 }
+if (Array.isArray(products) && typeof defaultInventory !== "undefined") {
+  defaultInventory.forEach(defItem => {
+    if (defItem && defItem.code && !products.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
+      products.push(defItem);
+    }
+  });
+}
 products.forEach(p => { if (p) p.category = normalizeCategory(p.category); });
 products = sortCatalog(products);
 localStorage.setItem("oban-products", JSON.stringify(products));

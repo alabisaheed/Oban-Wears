@@ -250,7 +250,28 @@ function sortCatalog(list) {
   });
 }
 
-let inventoryDb = sortCatalog(getOrSetDB("oban-products", defaultInventory));
+const getOrSetCatalogDB = (key, defaultVal) => {
+  let list = JSON.parse(localStorage.getItem(key) || "[]");
+  if (!list || !list.length) {
+    list = JSON.parse(JSON.stringify(defaultVal));
+    localStorage.setItem(key, JSON.stringify(list));
+    return list;
+  }
+  let catalogUpdated = false;
+  defaultVal.forEach(defItem => {
+    if (defItem && defItem.code && !list.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
+      list.push(defItem);
+      catalogUpdated = true;
+    }
+  });
+  if (catalogUpdated) {
+    list = sortCatalog(list);
+    localStorage.setItem(key, JSON.stringify(list));
+  }
+  return list;
+};
+
+let inventoryDb = sortCatalog(getOrSetCatalogDB("oban-products", defaultInventory));
 let blogDb = getOrSetDB("oban-blog-articles", initialBlogArticles);
 let staffDb = getOrSetDB("oban-staff-members", initialStaff);
 
