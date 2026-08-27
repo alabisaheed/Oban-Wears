@@ -32,11 +32,21 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/",
+      "source": "/:path*",
       "has": [
         {
           "type": "host",
-          "value": "(.*)dashboard(.*)"
+          "value": "dashboard.obanwears.com"
+        }
+      ],
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.dashboard.obanwears.com"
         }
       ],
       "destination": "/admin.html"

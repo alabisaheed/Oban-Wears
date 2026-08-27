@@ -1,3 +1,10 @@
+
+// Force cache-bust stale localStorage catalog
+if (localStorage.getItem("oban-catalog-version") !== "20260827_v2") {
+  localStorage.removeItem("oban-products");
+  localStorage.setItem("oban-catalog-version", "20260827_v2");
+}
+
 const defaultInventory = [
   // ── KAFTANS ──
   { code: "OB-KF01", featured: true, name: "OB-KF01", category: "Kaftans", price: 0, discount: 0, desc: "Tailored in premium teal cotton linen featuring an intricate four-leaf geometric chest embroidery panel, structured mandarin collar, and tailored cuffs.", images: ["assets/products/KAFTAN COLLECTION/OB-KF01/2e4fa091-9a55-499d-aaad-66c90e652aeb.jpg","assets/products/KAFTAN COLLECTION/OB-KF01/4e3fda67-bced-4916-8505-b8d5954c1973.jpg","assets/products/KAFTAN COLLECTION/OB-KF01/e0922109-3caa-4ef1-bf67-c79691b5a532.jpg"] },

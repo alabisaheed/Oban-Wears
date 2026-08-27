@@ -1,3 +1,10 @@
+
+// Force cache-bust stale localStorage catalog
+if (localStorage.getItem("oban-catalog-version") !== "20260827_v2") {
+  localStorage.removeItem("oban-products");
+  localStorage.setItem("oban-catalog-version", "20260827_v2");
+}
+
 const menuButton = document.querySelector("#menuButton");
 const mobileNav = document.querySelector("#mobileNav");
 if (menuButton && mobileNav) {
