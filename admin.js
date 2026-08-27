@@ -1269,93 +1269,78 @@ if (closeEditBtn && editInventoryDialog) {
 if (addInventoryForm) {
   addInventoryForm.onsubmit = async (e) => {
     e.preventDefault();
-    await pendingAddImageUpload;
-    
     const submitBtn = addInventoryForm.querySelector("button[type='submit']");
-    const originalText = submitBtn ? submitBtn.textContent : "Add garment";
+    const originalText = "Add garment";
+    const addImgInput = document.querySelector("#addImagesInput");
+    const isUploading = addImgInput && addImgInput.files && addImgInput.files.length > 0;
+    
     if (submitBtn) {
-      submitBtn.textContent = editImagesInput && editImagesInput.files?.length ? "Uploading Images..." : "Saving Changes...";
+      submitBtn.textContent = isUploading ? "Uploading Images..." : "Saving Changes...";
       submitBtn.disabled = true;
     }
     
-    const list = JSON.parse(localStorage.getItem("oban-products")) || [];
-    
-    const code = document.querySelector("#addCode").value.trim().toUpperCase();
-    const name = document.querySelector("#addName").value.trim();
-    const category = document.querySelector("#addCategory").value;
-    const price = +document.querySelector("#addPrice").value;
-    const desc = document.querySelector("#addDesc").value.trim();
-    const discount = +document.querySelector("#addDiscount").value;
-
-    if (list.some(item => (item.code || "").toUpperCase() === code)) {
-      alert("A garment with this code already exists. Please use a unique garment code.");
-      if (submitBtn) {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
-      }
-      return;
-    }
-    
-    const urlInput = document.querySelector("#addImagesUrlInput");
-    const urlVal = urlInput ? urlInput.value.trim() : "";
-    let imagesList = [...currentAddingImages];
-    if (urlVal) {
-      const splitUrls = urlVal.split(",").map(u => u.trim()).filter(u => u.length > 0);
-      imagesList = [...imagesList, ...splitUrls];
-    }
-
-    if (firebaseEnabled && typeof firebase !== "undefined" && firebase.storage) {
-      try {
-        for (let i = 0; i < imagesList.length; i++) {
-          if (imagesList[i].startsWith("data:")) {
-            imagesList[i] = await uploadBase64ToStorage(imagesList[i]);
-          }
-        }
-      } catch (err) {
-        console.warn("Storage upload failed, falling back to database base64:", err);
-      }
-    }
-
-    const newItem = {
-      id: Date.now(),
-      code,
-      name,
-      category,
-      price,
-      desc,
-      description: desc,
-      discount,
-      images: imagesList,
-      bg: "#eee5d5",
-      color: "#8c867c",
-      tag: "New",
-      date: Date.now()
-    };
-
-    list.push(newItem);
-    const sortedList = sortCatalog(list);
     try {
+      if (pendingAddImageUpload) {
+        await pendingAddImageUpload.catch(() => {});
+      }
+      
+      const list = JSON.parse(localStorage.getItem("oban-products")) || [];
+      
+      const code = document.querySelector("#addCode").value.trim().toUpperCase();
+      const name = document.querySelector("#addName").value.trim();
+      const category = document.querySelector("#addCategory").value;
+      const price = +document.querySelector("#addPrice").value;
+      const desc = document.querySelector("#addDesc").value.trim();
+      const discount = +document.querySelector("#addDiscount").value;
+
+      if (list.some(item => (item.code || "").toUpperCase() === code)) {
+        alert("A garment with this code already exists. Please use a unique garment code.");
+        return;
+      }
+      
+      const urlInput = document.querySelector("#addImagesUrlInput");
+      const urlVal = urlInput ? urlInput.value.trim() : "";
+      let imagesList = [...currentAddingImages];
+      if (urlVal) {
+        const splitUrls = urlVal.split(",").map(u => u.trim()).filter(u => u.length > 0);
+        imagesList = [...imagesList, ...splitUrls];
+      }
+
+      const newItem = {
+        id: Date.now(),
+        code,
+        name,
+        category,
+        price,
+        desc,
+        description: desc,
+        discount,
+        images: imagesList,
+        bg: "#eee5d5",
+        color: "#8c867c",
+        tag: "New",
+        date: Date.now()
+      };
+
+      list.push(newItem);
+      const sortedList = sortCatalog(list);
       localStorage.setItem("oban-products", JSON.stringify(sortedList));
+      
+      addInventoryForm.reset();
+      currentAddingImages = [];
+      renderAddImagePreview();
+      if (addInventoryDialog) addInventoryDialog.close();
+      renderInventory();
+      alert("Garment added successfully.");
     } catch (err) {
-      alert("This garment could not be saved because the selected image files are too large. Please use fewer or smaller images and try again.");
+      console.error("Add inventory error:", err);
+      alert("An error occurred while adding garment: " + err.message);
+    } finally {
       if (submitBtn) {
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
       }
-      return;
     }
-    
-    addInventoryForm.reset();
-    currentAddingImages = [];
-    renderAddImagePreview();
-    if (addInventoryDialog) addInventoryDialog.close();
-    renderInventory();
-    
-    if (submitBtn) {
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
-    }
-    alert("Garment added successfully.");
   };
 }
 
