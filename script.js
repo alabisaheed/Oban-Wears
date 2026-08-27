@@ -99,6 +99,22 @@ products.forEach(p => { if (p) p.category = normalizeCategory(p.category); });
 products = sortCatalog(products);
 localStorage.setItem("oban-products", JSON.stringify(products));
 
+// Auto-merge new default items into existing localStorage
+if (products && Array.isArray(products) && typeof defaultInventory !== "undefined") {
+  let catalogUpdated = false;
+  defaultInventory.forEach(defItem => {
+    if (defItem && defItem.code && !products.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
+      products.push(defItem);
+      catalogUpdated = true;
+    }
+  });
+  if (catalogUpdated) {
+    products = sortCatalog(products);
+    localStorage.setItem("oban-products", JSON.stringify(products));
+  }
+}
+
+
 // Immediately fetch fresh products from server database on page load
 (function() {
   const apiBase = (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") ? "api.php" : "https://dashboard.obanwears.com/api.php";
