@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "name": "oban-wears",
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-Admin-Email, X-Admin-Password" }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/admin.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ]
+}

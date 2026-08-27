@@ -1,0 +1,26 @@
+DirectoryIndex index.html index.php
+
+RewriteEngine On
+
+# Let WordPress handle its specific landing pages
+RewriteCond %{REQUEST_URI} ^/obpk [NC,OR]
+RewriteCond %{REQUEST_URI} ^/obku [NC,OR]
+RewriteCond %{REQUEST_URI} ^/obtu [NC]
+RewriteRule ^ index.php [L]
+
+
+# Redirect index.html to root /
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /.*index\.html\ HTTP/ [NC]
+RewriteRule ^(.*)index\.html$ /$1 [R=301,L]
+
+# Map /dashboard to admin.html silently
+RewriteRule ^dashboard$ admin.html [L]
+
+# Remove .html extension from public URLs
+RewriteCond %{THE_REQUEST} ^[A-Z]{3,9}\ /([^\ ]+)\.html\ HTTP/ [NC]
+RewriteRule ^(.*)\.html$ /$1 [R=301,L]
+
+# Internal rewrite to add .html extension if the file exists
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.html -f
+RewriteRule ^([^/]+)$ $1.html [L]

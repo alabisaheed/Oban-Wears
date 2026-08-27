@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1058605603106541');
+    fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1058605603106541&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- End Meta Pixel Code -->
+    <!-- PostHog -->
+    <script>
+        !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="Ni qi init Xi rn Rr tn sn Ki capture calculateEventProperties dn register register_once register_for_session unregister unregister_for_session fn getFeatureFlag getFeatureFlagPayload getFeatureFlagResult getAllFeatureFlags isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync pn identify setPersonProperties unsetPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset shutdown setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty cn un createPersonProfile setInternalOrTestUser vn Qi yn opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing an debug Or Rt getPageViewId captureTraceFeedback captureTraceMetric Wi".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+        posthog.init('phc_pMAc4iGvv6upuTn2jVT8DmT2qr9J3rY8KHKX9zWW9vHH', {
+            api_host: 'https://us.i.posthog.com',
+            defaults: '2026-05-30',
+            person_profiles: 'identified_only',
+        });
+        posthog.capture('my_custom_event', { property: 'value' });
+    </script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-YQ57FGD8ZP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-YQ57FGD8ZP');
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Journal | Oban Wears</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="assets/oban-favicon.png">
+  <style>
+    .catalogue-container {
+      max-width: 1200px;
+      margin: 60px auto 120px;
+      padding: 0 3.5vw;
+    }
+    .filter-bar {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 50px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      border: 1px solid var(--line);
+      background: transparent;
+      border-radius: 100px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s var(--ease);
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--gold);
+      color: var(--ink);
+      border-color: var(--gold);
+    }
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 50px 30px;
+    }
+    .blog-card {
+      display: flex;
+      flex-direction: column;
+      opacity: 1;
+      transform: scale(1);
+      transition: opacity 0.4s var(--ease), transform 0.4s var(--ease);
+    }
+    .blog-card.hidden {
+      display: none;
+    }
+    .card-image-block {
+      aspect-ratio: 1.25;
+      margin-bottom: 24px;
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card-image-block img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.6s var(--ease);
+      display: block;
+    }
+    .blog-card:hover .card-image-block img {
+      transform: scale(1.05);
+    }
+    .card-number {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(8, 8, 6, 0.75);
+      color: var(--gold);
+      font-family: 'Manrope', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 2px;
+      z-index: 2;
+      letter-spacing: 0.05em;
+    }
+    .blog-card .eyebrow {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: #817e78;
+      margin-bottom: 10px;
+    }
+    .blog-card h3 {
+      font-family: 'Manrope', sans-serif;
+      font-size: 21px;
+      font-weight: 500;
+      line-height: 1.35;
+      margin: 0 0 14px;
+      color: var(--ink);
+    }
+    .blog-card p {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #5a564f;
+      margin: 0 0 20px;
+      flex-grow: 1;
+    }
+    .read-more-link {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-decoration: none;
+      font-weight: 600;
+      color: var(--gold);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      border-bottom: 1px solid transparent;
+      transition: all 0.25s var(--ease);
+    }
+    .read-more-link:hover {
+      border-bottom-color: var(--gold);
+      gap: 10px;
+    }
+
+    @media(max-width: 960px) {
+      .blog-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 40px 20px;
+      }
+    }
+    @media(max-width: 650px) {
+      .blog-grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+      .catalogue-container {
+        margin: 40px auto 80px;
+      }
+      .filter-bar {
+        margin-bottom: 30px;
+        gap: 8px;
+      }
+      .filter-btn {
+        padding: 8px 14px;
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <button class="icon-button menu-button" id="menuButton"><span></span><span></span></button>
+    <a class="brand-link header-brand" href="index.html"><img src="assets/oban-wordmark-gold.png" alt="Oban Wears"></a>
+    <nav class="desktop-nav">
+      <a href="index.html">Home</a>
+      <a href="about.html">About</a>
+      <div class="nav-dropdown">
+        <a href="shop.html">Shop</a>
+        <div class="dropdown-menu">
+          <a href="kaftans.html">Kaftans</a>
+          <a href="agbada.html">Agbada</a>
+          <a href="suits.html">Suits</a>
+          <a href="father-son.html">Father &amp; Son</a>
+        </div>
+      </div>
+      <a class="active-page" href="blog.html">Blog</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQ</a>
+      <a href="tracker.html" style="display:none;">Track Order</a>
+      <div class="nav-dropdown">
+        <a href="profile.html">My Profile</a>
+        <div class="dropdown-menu">
+          <a href="profile.html">My Profile</a>
+          <a href="tracker.html">Track Order</a>
+        </div>
+      </div>
+    </nav>
+    <div></div>
+  </header>
+
+  <nav class="mobile-nav" id="mobileNav">
+    <a href="index.html">Home</a>
+    <a href="shop.html">Shop</a>
+    <a href="about.html">About</a>
+    <a class="active-page" href="blog.html">Blog</a>
+    <a href="father-son.html">Father &amp; Son</a>
+    <a href="contact.html">Contact</a>
+    <a href="faq.html">FAQ</a>
+    <a href="tracker.html">Track Order</a>
+    <a href="profile.html">My Profile</a>
+  </nav>
+
+  <main>
+    <section class="page-hero">
+      <p class="eyebrow">The Journal</p>
+      <h1>Notes on style</h1>
+      <p>Read updates, insights, and thoughts on menswear craft, care, and dressing well from the Oban team.</p>
+    </section>
+    
+    <div class="catalogue-container">
+      <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all">All Journal</button>
+        <button class="filter-btn" data-filter="heritage">Heritage &amp; Culture</button>
+        <button class="filter-btn" data-filter="style-guides">Style Guides</button>
+        <button class="filter-btn" data-filter="fabrics">Fabrics &amp; Craft</button>
+        <button class="filter-btn" data-filter="care">Garment Care</button>
+        <button class="filter-btn" data-filter="family">Family</button>
+      </div>
+
+      <div class="blog-grid">
+        <!-- Post 1 -->
+        <article class="blog-card" data-categories="heritage">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/AGBADA COLLECTION/OB-AG01/23.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">01</span>
+            <div class="article-header-title">The Timeless Elegance of Agbada</div>
+          </div>
+          <p class="eyebrow">Heritage &amp; Culture</p>
+          <h3>The Timeless Elegance of Agbada</h3>
+          <p>Agbada is more than just clothing, it is a symbol of tradition, culture, and elegance. Reimagining its majestic aura for the modern gentleman.</p>
+          <a href="agbada-elegance.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 2 -->
+        <article class="blog-card" data-categories="heritage">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/KAFTAN COLLECTION/OB-KF01/2e4fa091-9a55-499d-aaad-66c90e652aeb.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">02</span>
+            <div class="article-header-title">Why Every Man Needs a Kaftan</div>
+          </div>
+          <p class="eyebrow">Heritage &amp; Culture</p>
+          <h3>Why Every Man Needs a Kaftan in His Wardrobe</h3>
+          <p>Discover the ultimate blend of tradition, comfort, and versatility. Why this breathable classic is a must have for every contemporary wardrobe.</p>
+          <a href="why-kaftan.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 3 -->
+        <article class="blog-card" data-categories="style-guides">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/SUITS AND PANTS/OB-SP01/7ccef707-f56f-4a48-8fb6-8f365cda42b7.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">03</span>
+            <div class="article-header-title">Choosing the Right Outfit</div>
+          </div>
+          <p class="eyebrow">Style Guides</p>
+          <h3>How to Choose the Right Outfit for Any Occasion</h3>
+          <p>In a world of fast first impressions, your clothing speaks before you do. Build your personal signature brand through thoughtful style.</p>
+          <a href="choosing-right-outfit.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 4 -->
+        <article class="blog-card" data-categories="style-guides">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/AGBADA COLLECTION/OB-AG02/1475af46-42d8-434a-9a91-abf10d6ca14a.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">04</span>
+            <div class="article-header-title">The Modern Groom: Wedding Agbada</div>
+          </div>
+          <p class="eyebrow">Style Guides</p>
+          <h3>The Modern Groom: How to Style a Wedding Agbada</h3>
+          <p>A comprehensive guide for the Yoruba groom. Balancing cultural heritage with clean geometric embroidery, fine fabrics, and minimal accessorizing.</p>
+          <a href="modern-groom-agbada.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 5 -->
+        <article class="blog-card" data-categories="fabrics">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/KAFTAN COLLECTION/OB-KF03/3fe6999b-4bea-4155-928e-6589c4a19927.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">05</span>
+            <div class="article-header-title">Fabric Selection: Linen & Cashmere</div>
+          </div>
+          <p class="eyebrow">Fabrics &amp; Craft</p>
+          <h3>Fabric Selection: Choosing between Linen Cashmere and Cotton</h3>
+          <p>Linen, cashmere, or cotton? How to choose the perfect material for your kaftan based on tropical Lagos weather, drape, and occasion.</p>
+          <a href="fabric-selection-kaftans.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 6 -->
+        <article class="blog-card" data-categories="heritage">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/AGBADA COLLECTION/OB-AG05/2e3cd6bc-c913-4001-b506-09a221878f93.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">06</span>
+            <div class="article-header-title">The Rise of Contemporary Menswear</div>
+          </div>
+          <p class="eyebrow">Heritage &amp; Culture</p>
+          <h3>The Rise of Contemporary Nigerian Menswear in Global Fashion</h3>
+          <p>How a new generation of designers is taking traditional garments like the Kaftan and Agbada and commanding international runways from Paris to New York.</p>
+          <a href="contemporary-menswear-global.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 7 -->
+        <article class="blog-card" data-categories="family">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/FATHER AND SONS/OB-FS01/IMG-20240913-WA0022.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">07</span>
+            <div class="article-header-title">Father & Son Matching Outfits</div>
+          </div>
+          <p class="eyebrow">Family</p>
+          <h3>How to Style Father and Son Matching Outfits</h3>
+          <p>Celebrate family bonds and pass down cultural legacy. Heartwarming styling guidelines for coordinating fabrics and ensuring kid friendly comfort.</p>
+          <a href="father-son-matching.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 8 -->
+        <article class="blog-card" data-categories="fabrics">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/KAFTAN COLLECTION/OB-KF02/1b71c951-01b5-4c7f-a672-1b00d782aa30.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">08</span>
+            <div class="article-header-title">The Art of Bespoke Tailoring</div>
+          </div>
+          <p class="eyebrow">Fabrics &amp; Craft</p>
+          <h3>The Art of Bespoke Tailoring: What to Expect</h3>
+          <p>Invest in a garment made specifically for your body. What happens during your consultation, precise measurements, and first canvas fitting.</p>
+          <a href="art-of-bespoke-tailoring.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 9 -->
+        <article class="blog-card" data-categories="style-guides">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/KAFTAN COLLECTION/OB-KF07/3706cdb3-c3f3-4472-9496-69f4f8916f60.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">09</span>
+            <div class="article-header-title">Corporate Kaftans: Office Wear</div>
+          </div>
+          <p class="eyebrow">Style Guides</p>
+          <h3>Corporate Kaftans: Redefining Office Wear</h3>
+          <p>Redefine the boardroom. How structured shoulders, clean lines, and deep conservative colors are replacing the classic Western executive suit.</p>
+          <a href="corporate-kaftans-executive.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 10 -->
+        <article class="blog-card" data-categories="care">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/AGBADA COLLECTION/OB-AG06/14baeca3-4bfc-4307-a5cd-c393bfbe1c61.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">10</span>
+            <div class="article-header-title">Caring for Velvet & Brocade</div>
+          </div>
+          <p class="eyebrow">Garment Care</p>
+          <h3>Caring for Velvet and Brocade: Maintaining Luxury Fabrics</h3>
+          <p>Velvet and brocade are the fabrics of royalty. Maintain their rich texture, color, and luster with these dry cleaning and storage rules.</p>
+          <a href="caring-velvet-brocade.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 11 -->
+        <article class="blog-card" data-categories="style-guides">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/SUITS AND PANTS/OB-SP02/IMG-20240526-WA0019.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">11</span>
+            <div class="article-header-title">Accessorizing Traditional Wear</div>
+          </div>
+          <p class="eyebrow">Style Guides</p>
+          <h3>Accessorizing Traditional Wear: Shoes Caps and Watches</h3>
+          <p>Complete your look. Master the art of selecting hand woven Fila caps, polished leather loafers, and classic timepieces.</p>
+          <a href="accessorizing-traditional-wear.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+
+        <!-- Post 12 -->
+        <article class="blog-card" data-categories="style-guides">
+          <div class="card-image-block article-header-design" style="aspect-ratio:1.35; overflow:hidden; position:relative;">
+            <img src="assets/products/SUITS AND PANTS/OB-SP03/IMG-20240913-WA0018.jpg" alt="" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:brightness(0.85);">
+            <span class="card-number" style="position:relative; z-index:2;">12</span>
+            <div class="article-header-title">Suits vs Kaftans: When to Wear What</div>
+          </div>
+          <p class="eyebrow">Style Guides</p>
+          <h3>Suits vs Kaftans: When to Wear What</h3>
+          <p>Deciding between structured Western authority and comfortable traditional prestige for corporate settings and Nigerian cultural celebrations.</p>
+          <a href="suits-vs-kaftans.html" class="read-more-link">Read story &rarr;</a>
+        </article>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <a class="brand-link footer-brand" href="index.html"><img src="assets/oban-logo-gold.png" alt="Oban Wears"></a>
+    <div>
+      <p>Shop</p>
+      <a href="kaftans.html">Kaftans</a>
+      <a href="agbada.html">Agbada</a>
+      <a href="suits.html">Suits</a>
+      <a href="father-son.html">Father &amp; Son</a>
+    </div>
+    <div>
+      <p>Help</p>
+      <a href="about.html">About us</a>
+      <a href="blog.html">Blog</a>
+      <a href="faq.html">FAQ</a>
+      <a href="contact.html">Contact</a>
+      <a href="tracker.html">Track Order</a>
+    </div>
+    <div>
+      <p>Contact</p>
+      <span>Opposite Technoil,<br>Olowola Bus Stop, Igando,<br>Lagos State</span>
+      <a href="tel:+2348168003732">+234 816 800 3732</a>
+      <a href="mailto:obanwears@gmail.com">obanwears@gmail.com</a>
+    </div>
+    <div>
+      <p>Follow</p>
+      <a href="https://web.facebook.com/obanwears/" target="_blank" rel="noopener">Facebook</a>
+      <a href="https://www.instagram.com/obanwears/" target="_blank" rel="noopener">Instagram</a>
+      <a href="https://x.com/ObanWears" target="_blank" rel="noopener">X</a>
+    </div>
+    <small>&copy; 2026 Oban Wears. Lagos, Nigeria.</small>
+  </footer>
+
+  <script src="simple-pages.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const filterButtons = document.querySelectorAll(".filter-btn");
+      const blogCards = document.querySelectorAll(".blog-card");
+
+      filterButtons.forEach(button => {
+        button.addEventListener("click", () => {
+          filterButtons.forEach(btn => btn.classList.remove("active"));
+          button.classList.add("active");
+
+          const filterValue = button.getAttribute("data-filter");
+
+          blogCards.forEach(card => {
+            const categories = card.getAttribute("data-categories").split(",");
+            if (filterValue === "all" || categories.includes(filterValue)) {
+              card.classList.remove("hidden");
+              setTimeout(() => {
+                card.style.opacity = "1";
+                card.style.transform = "scale(1)";
+              }, 50);
+            } else {
+              card.style.opacity = "0";
+              card.style.transform = "scale(0.95)";
+              setTimeout(() => {
+                card.classList.add("hidden");
+              }, 300);
+            }
+          });
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+
+
