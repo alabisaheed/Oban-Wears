@@ -118,12 +118,12 @@
 </head>
 <body>
   <h1>Oban Product Preview Tool</h1>
-  <p style="text-align:center;">This page loads the product list from <code>script.js?v=20260827_v3</code> and displays all 68 products side by side with their image, swatch color, and description.</p>
+  <p style="text-align:center;">This page loads the product list from <code>script.js?v=20260827_v4</code> and displays all 68 products side by side with their image, swatch color, and description.</p>
   
   <div id="previewGrid" class="grid"></div>
 
-  <!-- We will load script.js?v=20260827_v3. But script.js?v=20260827_v3 runs code immediately on DOMContentLoaded or directly.
-       To prevent errors, we can mock the DOM elements script.js?v=20260827_v3 expects or redefine its render functions.
+  <!-- We will load script.js?v=20260827_v4. But script.js?v=20260827_v4 runs code immediately on DOMContentLoaded or directly.
+       To prevent errors, we can mock the DOM elements script.js?v=20260827_v4 expects or redefine its render functions.
   -->
   <div id="productGrid" style="display:none;"></div>
   <div id="emptyState" style="display:none;"></div>
@@ -153,7 +153,7 @@
   <div id="sortProducts" style="display:none;"></div>
 
   <script>
-    // Mock the DOM APIs used in script.js?v=20260827_v3 to avoid errors during loading
+    // Mock the DOM APIs used in script.js?v=20260827_v4 to avoid errors during loading
     document.querySelectorAll = function(sel) {
       if (sel === "button.filter[data-filter]" || sel === "[data-category-jump]" || sel === "button.filter" || sel === ".filter") {
         return [];
@@ -164,9 +164,9 @@
       return HTMLDocument.prototype.querySelectorAll.apply(this, arguments);
     };
   </script>
-  <script src="script.js?v=20260827_v3"></script>
+  <script src="script.js?v=20260827_v4"></script>
   <script>
-    // Once script.js?v=20260827_v3 is loaded, products array is populated. We can render it in our own grid.
+    // Once script.js?v=20260827_v4 is loaded, products array is populated. We can render it in our own grid.
     console.log("Loaded products:", products);
     const container = document.getElementById("previewGrid");
     products.forEach(p => {

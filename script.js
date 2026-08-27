@@ -1,8 +1,8 @@
 
 // Force cache-bust stale localStorage catalog
-if (localStorage.getItem("oban-catalog-version") !== "20260827_v3") {
+if (localStorage.getItem("oban-catalog-version") !== "20260827_v4") {
   localStorage.removeItem("oban-products");
-  localStorage.setItem("oban-catalog-version", "20260827_v3");
+  localStorage.setItem("oban-catalog-version", "20260827_v4");
 }
 
 const defaultInventory = [
@@ -1157,8 +1157,8 @@ function executeCheckout(nameVal, emailVal, whatsappVal) {
 }
 
 function apiEndpoint(key) {
-  if (window.location.hostname.includes("vercel.app")) {
-    const cleanKey = key.replace("oban-", "");
+  const cleanKey = key.replace("oban-", "");
+  if (window.location.hostname.includes("obanwears") || window.location.hostname.includes("vercel.app") || window.location.protocol === "https:") {
     return `/api/${cleanKey}`;
   }
   if (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
@@ -1553,36 +1553,31 @@ if (document.readyState === "loading") {
 
   let localVersions = {};
 
-  async function checkCloudUpdates() {
-    try {
-      const apiBase = (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") ? "api.php" : "https://dashboard.obanwears.com/api.php";
-      const res = await fetch(apiBase + "?key=oban-version");
-      if (!res.ok) return;
-      const cloudVersions = await res.json();
-      if (!cloudVersions) return;
-      
-      for (const key of Object.keys(cloudVersions)) {
-        if (allowedKeys.includes(key) && localVersions[key] !== cloudVersions[key]) {
-          const dataRes = await fetch(apiBase + "?key=" + key);
-          if (dataRes.ok) {
-            const val = await dataRes.json();
-            if (val !== null) {
-              const newStr = JSON.stringify(val);
-              originalSetItem.call(localStorage, key, newStr);
-              memCache[key] = newStr;
-              triggerUIRefresh(key, val);
-            }
-          }
-          localVersions[key] = cloudVersions[key];
-        }
+  let lastCloudCatalogHash = "";
+async function checkCloudUpdates() {
+  try {
+    const endpoint = apiEndpoint("oban-products");
+    const res = await fetch(endpoint);
+    if (!res.ok) return;
+    const cloudProducts = await res.json();
+    if (!cloudProducts || !Array.isArray(cloudProducts) || !cloudProducts.length) return;
+    
+    const newHash = JSON.stringify(cloudProducts.map(p => p.code + (p.price||0) + (p.featured||false) + (p.position||0)));
+    if (newHash !== lastCloudCatalogHash) {
+      lastCloudCatalogHash = newHash;
+      products = sortCatalog(cloudProducts);
+      localStorage.setItem("oban-products", JSON.stringify(products));
+      if (typeof renderProducts === "function") {
+        renderProducts();
       }
-    } catch(e) {
-      console.error("Failed to check hosting database updates:", e);
     }
+  } catch(e) {
+    console.warn("Cloud sync poll:", e);
   }
+}
 
-  // Polling interval for customers (every 30 seconds)
-  setInterval(checkCloudUpdates, 30000);
+setInterval(checkCloudUpdates, 4000);
+checkCloudUpdates();
   
   // Initial sync on page load
   checkCloudUpdates();

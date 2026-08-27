@@ -1,4 +1,4 @@
-// Vercel Serverless Endpoint for Oban Wears Products Catalog
+// Persistent Cloud Database Bridge for Oban Wears Products Catalog
 const defaultInventory = [
   {
     "code": "OB-KF01",
@@ -765,7 +765,7 @@ const defaultInventory = [
   }
 ];
 
-let memoryStore = null;
+const FIREBASE_DB = "https://oban-wears-default-rtdb.firebaseio.com/oban-products.json";
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -777,16 +777,33 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === "GET") {
-    return res.status(200).json(memoryStore || defaultInventory);
+    try {
+      const response = await fetch(FIREBASE_DB);
+      if (response.ok) {
+        const cloudData = await response.json();
+        if (cloudData && Array.isArray(cloudData) && cloudData.length > 0) {
+          return res.status(200).json(cloudData);
+        }
+      }
+    } catch (e) {
+      console.warn("Cloud DB fetch error, serving default inventory:", e);
+    }
+    return res.status(200).json(defaultInventory);
   }
 
   if (req.method === "POST") {
     try {
       const data = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-      memoryStore = data;
+      if (data && Array.isArray(data)) {
+        await fetch(FIREBASE_DB, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      }
       return res.status(200).json({ success: true });
     } catch (err) {
-      return res.status(400).json({ error: "Invalid JSON payload" });
+      return res.status(400).json({ error: "Invalid payload or cloud sync failed" });
     }
   }
 
