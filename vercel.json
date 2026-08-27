@@ -7,14 +7,39 @@
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-Admin-Email, X-Admin-Password" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, X-Admin-Email, X-Admin-Password"
+        }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/dashboard", "destination": "/admin.html" },
-    { "source": "/admin", "destination": "/admin.html" }
+    {
+      "source": "/dashboard",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "(.*)dashboard(.*)"
+        }
+      ],
+      "destination": "/admin.html"
+    }
   ]
 }
