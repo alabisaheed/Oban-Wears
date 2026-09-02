@@ -1,8 +1,8 @@
 
 // Force cache-bust stale localStorage catalog
-if (localStorage.getItem("oban-catalog-version") !== "20260827_v4") {
+if (localStorage.getItem("oban-catalog-version") !== "20260902_v1") {
   localStorage.removeItem("oban-products");
-  localStorage.setItem("oban-catalog-version", "20260827_v4");
+  localStorage.setItem("oban-catalog-version", "20260902_v1");
 }
 
 const defaultInventory = [
@@ -767,6 +767,45 @@ const defaultInventory = [
     "images": [
       "assets/products/SUITS AND PANTS/OB-SP11/Photo from Oban Wears.jpg",
       "assets/products/SUITS AND PANTS/OB-SP11/Photo from Oban Wears(1).jpg"
+    ]
+  },
+  {
+    "code": "OB-KF29",
+    "name": "OB-KF29",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "featured": true,
+    "desc": "Bespoke executive Kaftan in structured polished cotton featuring refined chest placket embroidery, mandarin collar, and tailored cuffs.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF29/Photo from Oban Wears.jpg",
+      "assets/products/KAFTAN COLLECTION/OB-KF29/Photo from Oban Wears(1).jpg"
+    ]
+  },
+  {
+    "code": "OB-KF30",
+    "name": "OB-KF30",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "featured": true,
+    "desc": "Premium modern Kaftan crafted from high-grade cotton linen with geometric chest panel detailing and tailored long sleeves.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF30/Photo from Oban Wears.jpg",
+      "assets/products/KAFTAN COLLECTION/OB-KF30/Photo from Oban Wears(1).jpg"
+    ]
+  },
+  {
+    "code": "OB-KF31",
+    "name": "OB-KF31",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "featured": true,
+    "desc": "Signature luxury Kaftan featuring intricate tone-on-tone embroidery, structured shoulder line, and refined ceremonial finish.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF31/Photo from Oban Wears.jpg",
+      "assets/products/KAFTAN COLLECTION/OB-KF31/Photo from Oban Wears(1).jpg"
     ]
   }
 ];
