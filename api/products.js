@@ -801,6 +801,102 @@ const defaultInventory = [
       "assets/products/KAFTAN COLLECTION/OB-KF31/Photo from Oban Wears.jpg",
       "assets/products/KAFTAN COLLECTION/OB-KF31/Photo from Oban Wears(1).jpg"
     ]
+  },
+  {
+    "code": "OB-KF21",
+    "featured": true,
+    "name": "OB-KF21",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Tailored in premium cotton linen featuring intricate chest embroidery panel, structured mandarin collar, and tailored cuffs.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0013.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF22",
+    "featured": true,
+    "name": "OB-KF22",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Crafted from structured polished cotton showcasing rich placket embroidery with refined long sleeve detailing.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0015.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF23",
+    "featured": true,
+    "name": "OB-KF23",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Executive Kaftan styled with delicate vertical chest pintucks and coordinating accent placket.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0017.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF24",
+    "featured": true,
+    "name": "OB-KF24",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Modern ceremonial Kaftan with geometric chest panel detailing and tailored long sleeves.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0013.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF25",
+    "featured": true,
+    "name": "OB-KF25",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Bespoke linen Kaftan styled with clean topstitching and mandarin collar.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0015.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF26",
+    "featured": true,
+    "name": "OB-KF26",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Executive Kaftan featuring geometric diamond embroidery along the placket and pocket.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0017.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF27",
+    "featured": true,
+    "name": "OB-KF27",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Signature Kaftan featuring detailed starburst embroidery on the placket and pocket.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0013.jpg"
+    ]
+  },
+  {
+    "code": "OB-KF28",
+    "featured": true,
+    "name": "OB-KF28",
+    "category": "Kaftans",
+    "price": 120000,
+    "discount": 0,
+    "desc": "Lightweight luxury cotton Kaftan with clean vertical pinstripes and detailed pocket embroidery.",
+    "images": [
+      "assets/products/KAFTAN COLLECTION/OB-KF20/IMG-20241102-WA0015.jpg"
+    ]
   }
 ];
 
