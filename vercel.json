@@ -22,6 +22,23 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/obpk",
+      "destination": "/kaftans.html",
+      "permanent": true
+    },
+    {
+      "source": "/obku",
+      "destination": "/kaftans.html",
+      "permanent": true
+    },
+    {
+      "source": "/obtu",
+      "destination": "/agbada.html",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/dashboard",
@@ -30,18 +47,6 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
-    },
-    {
-      "source": "/obpk",
-      "destination": "/kaftans.html"
-    },
-    {
-      "source": "/obku",
-      "destination": "/kaftans.html"
-    },
-    {
-      "source": "/obtu",
-      "destination": "/agbada.html"
     },
     {
       "source": "/:path*",
