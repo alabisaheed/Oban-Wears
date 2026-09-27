@@ -32,6 +32,18 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/obpk",
+      "destination": "/kaftans.html"
+    },
+    {
+      "source": "/obku",
+      "destination": "/kaftans.html"
+    },
+    {
+      "source": "/obtu",
+      "destination": "/agbada.html"
+    },
+    {
       "source": "/:path*",
       "has": [
         {
