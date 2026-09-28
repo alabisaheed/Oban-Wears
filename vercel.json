@@ -24,19 +24,19 @@
   ],
   "redirects": [
     {
-      "source": "/obpk",
-      "destination": "/kaftans.html",
-      "permanent": true
+      "source": "/cpanel",
+      "destination": "https://obanwears.com:2083",
+      "permanent": false
     },
     {
-      "source": "/obku",
-      "destination": "/kaftans.html",
-      "permanent": true
+      "source": "/webmail",
+      "destination": "https://obanwears.com:2096",
+      "permanent": false
     },
     {
-      "source": "/obtu",
-      "destination": "/agbada.html",
-      "permanent": true
+      "source": "/whm",
+      "destination": "https://obanwears.com:2087",
+      "permanent": false
     }
   ],
   "rewrites": [
