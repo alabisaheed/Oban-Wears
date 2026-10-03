@@ -42,10 +42,11 @@
   <meta name="description" content="Oban Wears Admin Dashboard Portal for staff tracking and updates.">
   <title>Admin Portal | Oban Wears</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin-login.css?v=20261003">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/oban-favicon.png">
 </head>
-<body>
+<body class="obl-signed-out">
   <header class="site-header" style="justify-content: center;">
     <a class="brand-link header-brand" href="index.html" style="margin: 0;"><img src="assets/oban-wordmark-gold.png" alt="Oban Wears"></a>
   </header>
@@ -54,15 +55,96 @@
 
   <main>
     <!-- Authentication view -->
-    <section class="admin-login-container" id="adminAuth">
-      <div class="admin-login-card">
-        <h2>Staff Authentication</h2>
-        <p>Enter email and password to access the admin dashboard.</p>
-        <input type="email" id="emailInput" placeholder="Email Address" required autocomplete="username">
-        <input type="password" id="passwordInput" placeholder="Password" required autocomplete="current-password">
-        <button id="loginBtn">Authenticate</button>
-        <p class="admin-error-msg" id="loginError">Incorrect credentials. Please try again.</p>
-        <a href="#" id="forgotPasswordLink" style="display:block;margin-top:16px;font-size:11px;color:var(--gold);text-decoration:underline;cursor:pointer;">Forgot Password?</a>
+    <section class="obl-root" id="adminAuth" style="display:none">
+      <div class="obl-shell">
+        <section class="obl-brand">
+          <a class="obl-logo" href="/"><img src="assets/oban-wordmark-gold.png" alt="Oban Wears"></a>
+          <p class="obl-eyebrow">Bespoke menswear · Control panel</p>
+          <h1 class="obl-headline">Every order, garment and client, in one place.</h1>
+          <p class="obl-sub">Sign in to follow orders from payment to dispatch, arrange the collection and keep client records up to date.</p>
+          <ul class="obl-points">
+            <li><span class="obl-point-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.4 4.6 15 3a3 3 0 0 1-6 0L3.6 4.6a1 1 0 0 0-.6 1.2l1.2 4a1 1 0 0 0 1.2.7L7 10v10a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V10l1.6.5a1 1 0 0 0 1.2-.7l1.2-4a1 1 0 0 0-.6-1.2Z"/></svg></span>Changes save to the server and show on every device</li>
+            <li><span class="obl-point-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>Passwords are checked on the server, never stored here</li>
+            <li><span class="obl-point-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></span>A one-time code by email confirms it's really you</li>
+          </ul>
+        </section>
+
+        <div class="obl-side">
+          <div class="obl-card">
+            <!-- Step 1: email + password -->
+            <form id="oblCredentials" novalidate>
+              <h2>Welcome back</h2>
+              <p class="obl-help">Sign in with your Oban Wears staff email and password. We'll email you a one-time code next.</p>
+              <div class="obl-error" role="alert" hidden></div>
+              <div class="obl-note" hidden></div>
+              <div class="obl-field">
+                <label class="obl-label" for="emailInput">Email</label>
+                <input id="emailInput" class="obl-input" type="email" autocomplete="username" required>
+              </div>
+              <div class="obl-field">
+                <div class="obl-label-row">
+                  <label class="obl-label" for="passwordInput">Password</label>
+                  <button type="button" class="obl-link" id="forgotPasswordLink">Forgot password?</button>
+                </div>
+                <div class="obl-input-wrap">
+                  <input id="passwordInput" class="obl-input has-toggle" type="password" autocomplete="current-password" required>
+                  <button type="button" class="obl-eye" id="oblTogglePassword" aria-label="Show password">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button type="submit" class="obl-btn" id="loginBtn">Continue</button>
+              <div class="obl-foot">
+                <span>New staff member? <button type="button" class="obl-link" id="oblShowRegister">Set up your account</button></span>
+              </div>
+            </form>
+
+            <!-- Step 1b: first-time set-up for authorised staff -->
+            <form id="oblRegister" novalidate hidden>
+              <h2>Set up your account</h2>
+              <p class="obl-help">Your email must first be added by an admin under Staff. Choose a password of at least 8 characters.</p>
+              <div class="obl-error" role="alert" hidden></div>
+              <div class="obl-field">
+                <label class="obl-label" for="regNameInput">Full name</label>
+                <input id="regNameInput" class="obl-input" type="text" autocomplete="name" required>
+              </div>
+              <div class="obl-field">
+                <label class="obl-label" for="regEmailInput">Email</label>
+                <input id="regEmailInput" class="obl-input" type="email" autocomplete="username" required>
+              </div>
+              <div class="obl-field">
+                <label class="obl-label" for="regPasswordInput">New password</label>
+                <input id="regPasswordInput" class="obl-input" type="password" autocomplete="new-password" minlength="8" required>
+              </div>
+              <button type="submit" class="obl-btn">Continue</button>
+              <div class="obl-foot">
+                <button type="button" class="obl-link" data-obl-back>Back to sign in</button>
+              </div>
+            </form>
+
+            <!-- Step 2: emailed code -->
+            <form id="oblCode" novalidate hidden>
+              <h2>Check your email</h2>
+              <p class="obl-help">Enter the 6-digit code we sent to <strong id="oblDestination"></strong>. It expires in 10 minutes.</p>
+              <div class="obl-error" role="alert" hidden></div>
+              <div class="obl-note" hidden></div>
+              <div class="obl-code" id="oblCodeBoxes">
+                <input inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="Digit 1 of 6">
+                <input inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Digit 2 of 6">
+                <input inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Digit 3 of 6">
+                <input inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Digit 4 of 6">
+                <input inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Digit 5 of 6">
+                <input inputmode="numeric" autocomplete="off" maxlength="6" aria-label="Digit 6 of 6">
+              </div>
+              <button type="submit" class="obl-btn" disabled>Verify and continue</button>
+              <div class="obl-foot">
+                <button type="button" class="obl-link" id="oblResend" disabled>Resend code</button>
+                <button type="button" class="obl-link" data-obl-back>Use a different account</button>
+              </div>
+            </form>
+          </div>
+          <div class="obl-protected">Protected sign-in · Your details are encrypted in transit.</div>
+        </div>
       </div>
     </section>
 
@@ -117,7 +199,7 @@
         <button class="admin-tab" data-tab="staff" id="tabBtnStaff" style="background:none;border:none;font-family:'Manrope';font-size:14px;font-weight:500;color:#8c867c;cursor:pointer;padding:8px 0;outline:none;">Staff Settings</button>
         <button class="admin-tab" data-tab="purchases" id="tabBtnPurchases" style="background:none;border:none;font-family:'Manrope';font-size:14px;font-weight:500;color:#8c867c;cursor:pointer;padding:8px 0;outline:none;">Purchases</button>
         <button class="admin-tab" data-tab="subscribers" id="tabBtnSubscribers" style="background:none;border:none;font-family:'Manrope';font-size:14px;font-weight:500;color:#8c867c;cursor:pointer;padding:8px 0;outline:none;">Subscribers</button>
-        <button class="admin-tab" data-tab="database" id="tabBtnDatabase" style="background:none;border:none;font-family:'Manrope';font-size:14px;font-weight:500;color:#8c867c;cursor:pointer;padding:8px 0;outline:none;">Cloud Sync</button>
+        <button class="admin-tab" data-tab="database" id="tabBtnDatabase" style="background:none;border:none;font-family:'Manrope';font-size:14px;font-weight:500;color:#8c867c;cursor:pointer;padding:8px 0;outline:none;">Sync &amp; Account</button>
       </div>
 
       <!-- Tab: Orders -->
@@ -366,7 +448,7 @@
           <!-- Right column: Authorize New Staff Form -->
           <div class="admin-form-card">
             <h2>Pre-authorize Staff Email</h2>
-            <p style="font-size:12px;color:#8c867c;margin-bottom:20px;font-family:'DM Sans';">Invite a staff member. They will be granted access automatically when they register using this email.</p>
+            <p style="font-size:12px;color:#8c867c;margin-bottom:20px;font-family:'DM Sans';">Add a staff email here, then ask them to open the dashboard and choose "Set up your account". They pick their own password and confirm with a code sent to that email.</p>
             <form id="inviteStaffForm">
               <div class="admin-form-group">
                 <label for="inviteEmail">Staff Email Address</label>
@@ -375,8 +457,9 @@
               <div class="admin-form-group">
                 <label for="inviteRole">Assigned Role</label>
                 <select id="inviteRole">
-                  <option value="editor">Editor (Blog updates only)</option>
-                  <option value="admin">Admin (Full Control)</option>
+                  <option value="editor">Editor (orders, garments, clients, blog; cannot delete)</option>
+                  <option value="manager">Manager (everything except staff)</option>
+                  <option value="admin">Admin (full control, including staff)</option>
                 </select>
               </div>
               <button type="submit">Authorize Email</button>
@@ -555,60 +638,39 @@
         </div>
       </div>
 
-      <!-- Tab: Cloud Database Sync -->
+      <!-- Tab: Server sync status and account -->
       <div id="tabDatabase" style="display:none;">
         <div style="margin-bottom:24px;">
-          <h2 style="font-family:'Manrope';font-size:22px;font-weight:500;margin:0 0 6px;">Firebase Real-time Cloud Sync</h2>
+          <h2 style="font-family:'Manrope';font-size:22px;font-weight:500;margin:0 0 6px;">Sync &amp; Account</h2>
           <p style="color:#8c867c;font-size:13px;margin:0;font-family:'DM Sans';">
-            Connect a cloud database to synchronize all orders, inventory, staff, and blog posts instantly across multiple devices.
+            Orders, garments, clients, blog posts and purchases are saved on the Oban Wears server. Each change is saved on its own and appears on every signed-in device within a few seconds.
           </p>
         </div>
-        
         <div class="admin-main-grid" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:30px;">
-          <!-- Left Column: Config Panel -->
           <div style="background:var(--white);border:1px solid var(--line);padding:24px;border-radius:2px;">
-            <h3 style="font-size:16px;font-weight:500;margin:0 0 20px;">Connection Settings</h3>
-            
-            <form id="firebaseConfigForm">
-              <div class="admin-form-group" style="margin-bottom:18px;">
-                <label for="firebaseConfigJson" style="display:block;font-size:11px;text-transform:uppercase;color:#8c867c;margin-bottom:8px;font-weight:bold;">Firebase Web App Configuration (JSON)</label>
-                <textarea id="firebaseConfigJson" rows="8" placeholder='Paste code here:
-{
-  "apiKey": "AIzaSy...",
-  "authDomain": "...",
-  "databaseURL": "...",
-  "projectId": "...",
-  "appId": "..."
-}' style="width:100%;padding:10px;font-size:12px;font-family:monospace;border:1px solid var(--line);background:transparent;outline:none;color:var(--ink);resize:vertical;" required></textarea>
-              </div>
-              <div style="display:flex;gap:12px;">
-                <button type="submit" style="background:var(--gold);color:var(--ink);border:none;padding:10px 20px;font-family:'Manrope';font-weight:600;font-size:11px;text-transform:uppercase;cursor:pointer;border-radius:2px;">Connect Database</button>
-                <button type="button" id="btnDisconnectFirebase" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;padding:10px 20px;font-family:'Manrope';font-weight:600;font-size:11px;text-transform:uppercase;cursor:pointer;border-radius:2px;display:none;">Disconnect</button>
-              </div>
-            </form>
+            <h3 style="font-size:16px;font-weight:500;margin:0 0 16px;">Connection</h3>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span id="firebaseStatusDot" style="width:10px;height:10px;border-radius:50%;background:#8c867c;display:inline-block;"></span>
+              <strong id="firebaseStatusText" style="font-size:13px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink);">Connecting…</strong>
+            </div>
+            <p id="syncLastPulled" style="font-size:12px;color:#66615a;margin:0 0 6px;"></p>
+            <p id="syncSignedInAs" style="font-size:12px;color:#66615a;margin:0 0 20px;"></p>
+            <button type="button" id="btnSyncLocalToCloud" style="background:var(--ink);color:var(--paper);border:none;padding:12px 20px;font-family:'Manrope';font-weight:600;font-size:11px;text-transform:uppercase;cursor:pointer;border-radius:2px;width:100%;">Reload everything from server</button>
           </div>
-          
-          <!-- Right Column: Database Actions & Status -->
-          <div style="background:var(--white);border:1px solid var(--line);padding:24px;border-radius:2px;display:flex;flex-direction:column;justify-content:space-between;">
-            <div>
-              <h3 style="font-size:16px;font-weight:500;margin:0 0 16px;">Connection Status</h3>
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:24px;">
-                <span id="firebaseStatusDot" style="width:10px;height:10px;border-radius:50%;background:#8c867c;display:inline-block;"></span>
-                <strong id="firebaseStatusText" style="font-size:13px;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink);">Local Mode (Offline)</strong>
+          <div style="background:var(--white);border:1px solid var(--line);padding:24px;border-radius:2px;">
+            <h3 style="font-size:16px;font-weight:500;margin:0 0 16px;">Change my password</h3>
+            <form id="changePasswordForm">
+              <div class="admin-form-group">
+                <label for="currentPasswordInput">Current password</label>
+                <input type="password" id="currentPasswordInput" autocomplete="current-password" required>
               </div>
-              
-              <div id="firebaseActionsBlock" style="display:none;border-top:1px solid var(--line);padding-top:20px;">
-                <h4 style="font-size:12px;font-weight:bold;margin:0 0 10px;text-transform:uppercase;color:#8c867c;">Data Operations</h4>
-                <p style="font-size:12px;color:#66615a;margin:0 0 16px;line-height:1.5;">
-                  If this is a new project database, click below to upload your current local data (orders, staff, products, and blogs) to your cloud database so you don't lose anything.
-                </p>
-                <button type="button" id="btnSyncLocalToCloud" style="background:var(--ink);color:var(--paper);border:none;padding:12px 20px;font-family:'Manrope';font-weight:600;font-size:11px;text-transform:uppercase;cursor:pointer;border-radius:2px;width:100%;">Sync Local Data to Cloud</button>
+              <div class="admin-form-group">
+                <label for="newPasswordInput">New password (at least 8 characters)</label>
+                <input type="password" id="newPasswordInput" autocomplete="new-password" minlength="8" required>
               </div>
-            </div>
-            
-            <div style="background:#eee5d5;padding:15px;border-radius:2px;margin-top:20px;font-size:12px;color:var(--ink);line-height:1.5;">
-              <strong>Note:</strong> Real-time synchronization is secure and uses client-side encryption. The admin account can control access rights in the **Staff Settings** tab.
-            </div>
+              <button type="submit">Update password</button>
+              <p id="changePasswordMessage" style="font-size:12px;margin:10px 0 0;"></p>
+            </form>
           </div>
         </div>
       </div>
@@ -892,6 +954,7 @@
   </footer>
 
   <script src="print-utility.js"></script>
-  <script src="admin.js?v=20260902_v1"></script>
+  <script src="admin-sync.js?v=20261003"></script>
+  <script src="admin.js?v=20261003"></script>
 </body>
 </html>

@@ -28,68 +28,86 @@ const profileDashboard = document.querySelector("#profileDashboard");
 const profileLoginForm = document.querySelector("#profileLoginForm");
 const loginEmail = document.querySelector("#loginEmail");
 
-const checkSession = () => {
-  const email = localStorage.getItem("oban-client-logged-in-email");
-  if (email) {
-    if (profileAuth) profileAuth.style.display = "none";
-    if (profileDashboard) profileDashboard.style.display = "block";
-    loadProfile(email);
-  } else {
+// The profile lives on the server (/api/profile); this browser keeps only a
+// sign-in token and a copy of the name and contact details for checkout.
+const CLIENT_TOKEN_KEY = "oban-client-token";
+const CLIENT_PROFILE_KEY = "oban-client-profile";
+
+function clientToken() {
+  return localStorage.getItem(CLIENT_TOKEN_KEY) || "";
+}
+
+async function profileApi(method, body) {
+  const res = await fetch("/api/profile", {
+    method,
+    cache: "no-store",
+    headers: { "Content-Type": "application/json", ...(clientToken() ? { Authorization: `Bearer ${clientToken()}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || "Something went wrong. Please try again.");
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function signOutClient() {
+  localStorage.removeItem(CLIENT_TOKEN_KEY);
+  localStorage.removeItem(CLIENT_PROFILE_KEY);
+  // Left behind by older builds.
+  localStorage.removeItem("oban-client-logged-in-email");
+}
+
+const checkSession = async () => {
+  if (!clientToken()) {
     if (profileAuth) profileAuth.style.display = "block";
     if (profileDashboard) profileDashboard.style.display = "none";
+    return;
+  }
+  try {
+    const data = await profileApi("GET");
+    localStorage.setItem(CLIENT_PROFILE_KEY, JSON.stringify(data.profile));
+    if (profileAuth) profileAuth.style.display = "none";
+    if (profileDashboard) profileDashboard.style.display = "block";
+    loadProfile(data.profile, data.orders);
+  } catch (err) {
+    if (err.status === 401) signOutClient();
+    if (profileAuth) profileAuth.style.display = "block";
+    if (profileDashboard) profileDashboard.style.display = "none";
+    if (err.status !== 401) alert(err.message);
   }
 };
 
 if (profileLoginForm) {
-  profileLoginForm.onsubmit = (e) => {
+  profileLoginForm.onsubmit = async (e) => {
     e.preventDefault();
     const email = loginEmail.value.trim().toLowerCase();
     const pinInput = document.querySelector("#loginPin");
     const pin = pinInput ? pinInput.value.trim() : "";
-    
+
     if (!email || !pin) return;
-    if (pin.length !== 4 || isNaN(pin)) {
+    if (!/^\d{4}$/.test(pin)) {
       alert("PIN must be a 4-digit number.");
       return;
     }
-    
-    const submitLogin = () => {
-      const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-      let p = profiles[email];
-      
-      if (p) {
-        if (p.pin && p.pin !== pin) {
-          alert("Incorrect Access PIN. Please check your credentials and try again.");
-          return;
-        }
-        if (!p.pin) {
-          p.pin = pin;
-          profiles[email] = p;
-          localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
-        }
-      } else {
-        p = {
-          email: email,
-          pin: pin,
-          name: "",
-          whatsapp: ""
-        };
-        profiles[email] = p;
-        localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
-      }
-      
-      localStorage.setItem("oban-client-logged-in-email", email);
+    try {
+      const data = await profileApi("POST", { action: "login", email, pin });
+      localStorage.setItem(CLIENT_TOKEN_KEY, data.token);
+      localStorage.setItem(CLIENT_PROFILE_KEY, JSON.stringify(data.profile));
+      if (pinInput) pinInput.value = "";
       checkSession();
-    };
-    
-    submitLogin();
+    } catch (err) {
+      alert(err.message);
+    }
   };
 }
 
 const logoutBtn = document.querySelector("#logoutBtn");
 if (logoutBtn) {
   logoutBtn.onclick = () => {
-    localStorage.removeItem("oban-client-logged-in-email");
+    signOutClient();
     window.location.reload();
   };
 }
@@ -101,58 +119,54 @@ document.querySelectorAll(".profile-tab").forEach((tabBtn) => {
   tabBtn.onclick = () => {
     document.querySelectorAll(".profile-tab").forEach(b => b.classList.remove("active"));
     tabBtn.classList.add("active");
-    
+
     const targetTab = tabBtn.dataset.tab;
     if (tabAccount) tabAccount.style.display = targetTab === "account" ? "block" : "none";
     if (tabOrders) tabOrders.style.display = targetTab === "orders" ? "block" : "none";
   };
 });
 
-function loadProfile(email) {
-  const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-  let p = profiles[email];
-  
-  if (!p) {
-    p = {
-      email: email,
-      name: "",
-      whatsapp: ""
-    };
-    profiles[email] = p;
-    localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
-  }
-  
+function loadProfile(p, orders) {
   document.querySelector("#profileEmailDisplay").value = p.email;
   document.querySelector("#profileName").value = p.name || "";
   document.querySelector("#profileWhatsApp").value = p.whatsapp || "";
-  
-  renderPurchaseHistory(email);
+  renderPurchaseHistory(orders || []);
 }
 
 const accountForm = document.querySelector("#accountForm");
 if (accountForm) {
-  accountForm.onsubmit = (e) => {
+  accountForm.onsubmit = async (e) => {
     e.preventDefault();
-    const email = localStorage.getItem("oban-client-logged-in-email");
-    const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-    const p = profiles[email];
-    if (p) {
-      p.name = document.querySelector("#profileName").value.trim();
-      p.whatsapp = document.querySelector("#profileWhatsApp").value.trim();
-      profiles[email] = p;
-      localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
+    try {
+      const data = await profileApi("PUT", {
+        name: document.querySelector("#profileName").value.trim(),
+        whatsapp: document.querySelector("#profileWhatsApp").value.trim()
+      });
+      localStorage.setItem(CLIENT_PROFILE_KEY, JSON.stringify(data.profile));
       alert("Profile updated successfully");
+    } catch (err) {
+      if (err.status === 401) {
+        signOutClient();
+        checkSession();
+      }
+      alert(err.message);
     }
   };
 }
 
-function renderPurchaseHistory(email) {
+function escapeText(value) {
+  const div = document.createElement("div");
+  div.textContent = value === undefined || value === null ? "" : String(value);
+  return div.innerHTML;
+}
+
+function renderPurchaseHistory(orders) {
   const purchaseHistoryBody = document.querySelector("#purchaseHistoryBody");
   if (!purchaseHistoryBody) return;
-  
-  const allOrders = JSON.parse(localStorage.getItem("oban-orders")) || [];
-  const clientOrders = allOrders.filter(o => o.email && o.email.trim().toLowerCase() === email);
-  
+
+  const allOrders = orders;
+  const clientOrders = orders;
+
   if (!clientOrders.length) {
     purchaseHistoryBody.innerHTML = `
       <tr>
@@ -172,8 +186,8 @@ function renderPurchaseHistory(email) {
     
     return `
       <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:16px;"><strong>${o.ref}</strong></td>
-        <td style="padding:16px;">${o.piece}${fabricBadge}</td>
+        <td style="padding:16px;"><strong>${escapeText(o.ref)}</strong></td>
+        <td style="padding:16px;">${escapeText(o.piece)}${fabricBadge}</td>
         <td style="padding:16px;">${o.date}</td>
         <td style="padding:16px;"><strong>${formatNaira(o.total)}</strong></td>
         <td style="padding:16px;">

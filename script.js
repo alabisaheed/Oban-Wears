@@ -929,50 +929,37 @@ function sortCatalog(list) {
   });
 }
 
-let products = JSON.parse(localStorage.getItem("oban-products"));
-if (!products || !products.length || !products.some(p => p && p.code)) {
-  products = JSON.parse(JSON.stringify(defaultInventory));
-}
-if (Array.isArray(products) && typeof defaultInventory !== "undefined") {
-  defaultInventory.forEach(defItem => {
-    if (defItem && defItem.code && !products.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
-      products.push(defItem);
-    }
-  });
-}
+// The catalogue comes from /api/products (managed in the dashboard). The last
+// copy is cached in this browser so pages render instantly; the built-in list
+// is only used if neither is available. Visitors never write the catalogue.
+const CATALOG_CACHE_KEY = "oban-catalog-cache";
+let products = null;
+try { products = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || "null"); } catch (e) {}
+if (!Array.isArray(products) || !products.some(p => p && p.code)) products = JSON.parse(JSON.stringify(defaultInventory));
 products.forEach(p => { if (p) p.category = normalizeCategory(p.category); });
 products = sortCatalog(products);
-localStorage.setItem("oban-products", JSON.stringify(products));
 
-// Auto-merge new default items into existing localStorage
-if (products && Array.isArray(products) && typeof defaultInventory !== "undefined") {
-  let catalogUpdated = false;
-  defaultInventory.forEach(defItem => {
-    if (defItem && defItem.code && !products.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
-      products.push(defItem);
-      catalogUpdated = true;
-    }
-  });
-  if (catalogUpdated) {
-    products = sortCatalog(products);
-    localStorage.setItem("oban-products", JSON.stringify(products));
+let lastCatalogJson = "";
+async function refreshCatalog() {
+  try {
+    const res = await fetch("/api/products", { cache: "no-store" });
+    if (!res.ok) return;
+    const list = await res.json();
+    if (!Array.isArray(list) || !list.some(p => p && p.code)) return;
+    const json = JSON.stringify(list);
+    if (json === lastCatalogJson) return;
+    lastCatalogJson = json;
+    products = sortCatalog(list.map(p => { p.category = normalizeCategory(p.category); return p; }));
+    try { localStorage.setItem(CATALOG_CACHE_KEY, json); } catch (e) {}
+    if (typeof renderProducts === "function" && document.querySelector("#productGrid")) renderProducts();
+    if (typeof renderCart === "function") renderCart();
+  } catch (e) {
+    console.warn("Catalogue refresh:", e);
   }
 }
-
-
-// Immediately fetch fresh products from server database on page load
-(function() {
-  const apiBase = (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") ? "api.php" : "https://dashboard.obanwears.com/api.php";
-  fetch(apiBase + "?key=oban-products")
-    .then(r => r.ok ? r.json() : null)
-    .then(serverProducts => {
-      if (serverProducts && Array.isArray(serverProducts) && serverProducts.length && serverProducts.some(p => p && p.code)) {
-        products = sortCatalog(serverProducts.map(p => { if (p) p.category = normalizeCategory(p.category); return p; }));
-        if (typeof renderProducts === "function") renderProducts();
-      }
-    })
-    .catch(() => {});
-})();
+refreshCatalog();
+setInterval(() => { if (document.visibilityState === "visible") refreshCatalog(); }, 60000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refreshCatalog(); });
 
 const money=n=>n?new Intl.NumberFormat("en-NG",{style:"currency",currency:"NGN",maximumFractionDigits:0}).format(n):"Price on request";
 const getProductPrice=p=>p?(p.discount>0?Math.round(p.price*(1-p.discount/100)):p.price):0;
@@ -1184,10 +1171,9 @@ function openCheckoutDetailsModal() {
     };
   }
   
-  const loggedEmail = localStorage.getItem("oban-client-logged-in-email");
-  if (loggedEmail) {
-    const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-    const p = profiles[loggedEmail];
+  let p = null;
+  try { p = JSON.parse(localStorage.getItem("oban-client-profile") || "null"); } catch (e) {}
+  {
     if (p) {
       modal.querySelector("#custFullName").value = p.name || "";
       modal.querySelector("#custEmail").value = p.email || "";
@@ -1198,104 +1184,64 @@ function openCheckoutDetailsModal() {
   modal.showModal();
 }
 
-function executeCheckout(nameVal, emailVal, whatsappVal) {
-  try {
-    const prefix = "OB";
-    const randomNumber = Math.floor(1000 + Math.random() * 9000);
-    const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const randomLetter = letters[Math.floor(Math.random() * letters.length)];
-    const orderRef = prefix + randomNumber + randomLetter;
-    
-    let itemsDescription = [];
-    cart.forEach((line) => {
-      const p = products.find(x => (x.code||String(x.id)) === (line.code||line.id));
-      if (p) {
-        itemsDescription.push(`${p.name} (Size ${line.size}, Quantity ${line.qty})`);
-      }
-    });
-    const itemsStr = itemsDescription.join(", ");
-    const total = cart.reduce((sum, line) => {
-      const p = products.find(x => (x.code||String(x.id)) === (line.code||line.id));
-      return sum + (p ? getProductPrice(p) : 0) * line.qty;
-    }, 0);
-    
-    const d = new Date();
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const dateStr = `${months[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}`;
-    
-    const loggedEmail = localStorage.getItem("oban-client-logged-in-email");
-    let measurements = null;
-    if (loggedEmail) {
-      const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-      const p = profiles[loggedEmail];
-      if (p && p.measurements) {
-        measurements = p.measurements;
-      }
-    }
-    
-    const newOrder = {
-      ref: orderRef,
-      name: nameVal,
-      email: emailVal,
-      whatsapp: whatsappVal,
-      piece: itemsStr,
-      total: total,
-      currentStage: 1, // Waiting for Payment
-      date: dateStr,
-      measurements: measurements
-    };
-    
-    let ordersDb = JSON.parse(localStorage.getItem("oban-orders")) || [];
-    ordersDb.push(newOrder);
-    localStorage.setItem("oban-orders", JSON.stringify(ordersDb));
-    
-    // Sync to SQLite Database (api.php)
-    try {
-      fetch(apiEndpoint("oban-orders"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ordersDb)
-      }).catch(e => console.warn("Order API sync warning:", e));
-    } catch (e) {}
-    
-    let message = `Hello Oban Wears, I would like to place an order (Order Reference: ${orderRef}):\n\n`;
-    message += `Customer Name: ${nameVal}\n`;
-    message += `Email Address: ${emailVal}\n`;
-    message += `WhatsApp Number: ${whatsappVal}\n\n`;
-    
-    cart.forEach((line) => {
-      const p = products.find(x => x.id === line.id);
-      if (p) {
-        message += `* ${p.name} (Quantity ${line.qty}) at ${money(getProductPrice(p))}\n`;
-      }
-    });
-    
-    message += `\nSubtotal: ${money(total)}\n\n`;
-    message += "Please share the payment details to complete my order.";
-    
-    const encodedText = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/2348168003732?text=${encodedText}`;
-    
-    cart = [];
-    saveCart();
-    setDrawer(false);
-    
-    window.open(whatsappUrl, "_blank");
-  } catch (error) {
-    console.log("Checkout failed:", error);
-    toast("Checkout failed, please try again");
+async function executeCheckout(nameVal, emailVal, whatsappVal) {
+  // Open the WhatsApp tab during the click so popup blockers allow it.
+  const waTab = window.open("", "_blank");
+  if (waTab) {
+    try { waTab.document.write("<p style=\"font-family:sans-serif;padding:24px\">Preparing your order…</p>"); } catch (e) {}
   }
-}
+  let customerToken = "";
+  try { customerToken = localStorage.getItem("oban-client-token") || ""; } catch (e) {}
 
-function apiEndpoint(key) {
-  const cleanKey = key.replace("oban-", "");
-  if (window.location.hostname.includes("obanwears") || window.location.hostname.includes("vercel.app") || window.location.protocol === "https:") {
-    return `/api/${cleanKey}`;
+  let order;
+  try {
+    const res = await fetch("/api/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: { name: nameVal, email: emailVal, whatsapp: whatsappVal },
+        items: cart.map(line => ({ code: line.code || line.id, size: line.size, qty: line.qty })),
+        customerToken
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "We could not place your order. Please try again.");
+    order = data;
+  } catch (error) {
+    if (waTab) waTab.close();
+    console.warn("Checkout failed:", error);
+    toast(error.message || "Checkout failed, please try again");
+    return;
   }
-  if (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") {
-    return `api.php?key=${key}`;
-  }
-  return `https://dashboard.obanwears.com/api.php?key=${key}`;
+
+  let message = `Hello Oban Wears, I would like to place an order (Order Reference: ${order.ref}):
+
+`;
+  message += `Customer Name: ${nameVal}
+`;
+  message += `Email Address: ${emailVal}
+`;
+  message += `WhatsApp Number: ${whatsappVal}
+
+`;
+  order.items.forEach(item => {
+    message += `* ${item.name} (Size ${item.size}, Quantity ${item.qty}) at ${money(item.price)}
+`;
+  });
+  message += `
+Subtotal: ${money(order.total)}
+
+`;
+  message += "Please share the payment details to complete my order.";
+  const whatsappUrl = `https://wa.me/2348168003732?text=${encodeURIComponent(message)}`;
+
+  cart = [];
+  saveCart();
+  setDrawer(false);
+  toast(`Order ${order.ref} placed. Track it any time with this reference.`);
+
+  if (waTab && !waTab.closed) waTab.location.href = whatsappUrl;
+  else window.location.href = whatsappUrl;
 }
 
 const newsletter=document.querySelector("#newsletterForm");
@@ -1305,25 +1251,21 @@ if(newsletter) {
     const emailInput = document.querySelector("#newsletterEmail");
     const email = emailInput ? emailInput.value.trim().toLowerCase() : "";
     if (email) {
-      const subData = {
-        email: email,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Save to LocalStorage
-      const localSubscribers = JSON.parse(localStorage.getItem("oban-subscribers") || "{}");
-      localSubscribers[email] = subData;
-      localStorage.setItem("oban-subscribers", JSON.stringify(localSubscribers));
-      
-      // Sync to SQLite Database (api.php)
       try {
-        fetch(apiEndpoint("oban-subscribers"), {
+        const res = await fetch("/api/subscribers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(localSubscribers)
-        }).catch(err => console.warn("Subscriber API sync warning:", err));
-      } catch (err) {}
-
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          document.querySelector("#formMessage").textContent = data.error || "Please try again in a moment.";
+          return;
+        }
+      } catch (err) {
+        document.querySelector("#formMessage").textContent = "You seem to be offline. Please try again.";
+        return;
+      }
       document.querySelector("#formMessage").textContent="You're on the list. Welcome to Oban.";
       e.target.reset();
     }
@@ -1619,98 +1561,3 @@ if (document.readyState === "loading") {
     initCollapsibleMobileNav();
   }
 })();
-
-// -------------------------------------------------------------
-// -------------------------------------------------------------
-// LOCAL HOSTING DATABASE SYNCHRONIZATION
-// -------------------------------------------------------------
-(function() {
-  const allowedKeys = [
-    "oban-products", "oban-orders", "oban-subscribers", "oban-blog-articles"
-  ];
-
-  async function syncKeyToHosting(key, value) {
-    if (!allowedKeys.includes(key)) return;
-    try {
-      const apiBase = (window.location.hostname.includes("dashboard") || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:") ? "api.php" : "https://dashboard.obanwears.com/api.php";
-      await fetch(apiBase + "?key=" + key, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: value
-      });
-    } catch (err) {
-      console.error(`Sync network error for key ${key}:`, err);
-    }
-  }
-
-  // Override localStorage
-  const memCache = {};
-  const originalGetItem = localStorage.getItem;
-  localStorage.getItem = function(key) {
-    if (memCache.hasOwnProperty(key)) {
-      return memCache[key];
-    }
-    return originalGetItem.apply(this, arguments);
-  };
-
-  const originalSetItem = localStorage.setItem;
-  localStorage.setItem = function(key, value) {
-    memCache[key] = value;
-    let localSucceeded = false;
-    try {
-      originalSetItem.apply(this, arguments);
-      localSucceeded = true;
-    } catch (e) {
-      console.warn("Storage quota exceeded for key:", key, e);
-    }
-
-    syncKeyToHosting(key, value);
-
-    if (!localSucceeded) {
-      throw new DOMException("Failed to execute 'setItem' on 'Storage': Setting the value exceeded the quota.", "QuotaExceededError");
-    }
-  };
-
-  function triggerUIRefresh(key, val) {
-    if (key === "oban-products") {
-      if (typeof products !== "undefined") {
-        products = sortCatalog(val);
-        if (typeof renderProducts === "function") {
-          renderProducts();
-        }
-      }
-    }
-  }
-
-  let localVersions = {};
-
-  let lastCloudCatalogHash = "";
-async function checkCloudUpdates() {
-  try {
-    const endpoint = apiEndpoint("oban-products");
-    const res = await fetch(endpoint);
-    if (!res.ok) return;
-    const cloudProducts = await res.json();
-    if (!cloudProducts || !Array.isArray(cloudProducts) || !cloudProducts.length) return;
-    
-    const newHash = JSON.stringify(cloudProducts.map(p => p.code + (p.price||0) + (p.featured||false) + (p.position||0)));
-    if (newHash !== lastCloudCatalogHash) {
-      lastCloudCatalogHash = newHash;
-      products = sortCatalog(cloudProducts);
-      localStorage.setItem("oban-products", JSON.stringify(products));
-      if (typeof renderProducts === "function") {
-        renderProducts();
-      }
-    }
-  } catch(e) {
-    console.warn("Cloud sync poll:", e);
-  }
-}
-
-setInterval(checkCloudUpdates, 4000);
-checkCloudUpdates();
-  
-  // Initial sync on page load
-  checkCloudUpdates();
-})();
-

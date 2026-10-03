@@ -1034,13 +1034,6 @@ const initialBlogArticles = [
   }
 ];
 
-const initialStaff = [
-  { email: "admin@obanwears.com", role: "admin", status: "active" },
-  { email: "manager@obanwears.com", role: "manager", status: "active" },
-  { email: "customerservice@obanwears.com", role: "editor", status: "active" },
-  { email: "tailor@obanwears.com", role: "editor", status: "active" }
-];
-
 const initialVendors = [];
 
 const initialPurchaseOrders = [];
@@ -1088,86 +1081,19 @@ function sortCatalog(list) {
   });
 }
 
+// The server is the source of truth; defaults only fill an empty first load
+// until the first sync replaces them.
 const getOrSetCatalogDB = (key, defaultVal) => {
-  let list = JSON.parse(localStorage.getItem(key) || "[]");
-  if (!list || !list.length) {
-    list = JSON.parse(JSON.stringify(defaultVal));
-    localStorage.setItem(key, JSON.stringify(list));
-    return list;
-  }
-  let catalogUpdated = false;
-  defaultVal.forEach(defItem => {
-    if (defItem && defItem.code && !list.some(p => p && (p.code || "").toUpperCase() === defItem.code.toUpperCase())) {
-      list.push(defItem);
-      catalogUpdated = true;
-    }
-  });
-  if (catalogUpdated) {
-    list = sortCatalog(list);
-    localStorage.setItem(key, JSON.stringify(list));
-  }
-  return list;
+  const list = JSON.parse(localStorage.getItem(key) || "[]");
+  return list && list.length ? list : JSON.parse(JSON.stringify(defaultVal));
 };
 
 let inventoryDb = sortCatalog(getOrSetCatalogDB("oban-products", defaultInventory));
 let blogDb = getOrSetDB("oban-blog-articles", initialBlogArticles);
-let staffDb = getOrSetDB("oban-staff-members", initialStaff);
-
-// Guarantee default users exist in staffDb
-const defaultStaff = [
-  { email: "admin@obanwears.com", role: "admin" },
-  { email: "manager@obanwears.com", role: "manager" },
-  { email: "customerservice@obanwears.com", role: "editor" },
-  { email: "tailor@obanwears.com", role: "editor" }
-];
-let staffUpdated = false;
-defaultStaff.forEach(ds => {
-  if (!staffDb.some(s => s.email === ds.email)) {
-    staffDb.push({ email: ds.email, role: ds.role, status: "active" });
-    staffUpdated = true;
-  }
-});
-if (staffUpdated) {
-  localStorage.setItem("oban-staff-members", JSON.stringify(staffDb));
-}
-
-// Guarantee default passwords exist in localStorage
-const initialPasswords = {
-  "admin@obanwears.com": "ObanAdmin2026",
-  "manager@obanwears.com": "ObanManager2026!",
-  "customerservice@obanwears.com": "ObanService2026!",
-  "tailor@obanwears.com": "ObanTailor2026!"
-};
-let passwordsDb = JSON.parse(localStorage.getItem("oban-staff-passwords"));
-if (!passwordsDb) {
-  localStorage.setItem("oban-staff-passwords", JSON.stringify(initialPasswords));
-  passwordsDb = initialPasswords;
-} else {
-  let passwordsUpdated = false;
-  Object.keys(initialPasswords).forEach(email => {
-    if (!passwordsDb[email]) {
-      passwordsDb[email] = initialPasswords[email];
-      passwordsUpdated = true;
-    }
-  });
-  if (passwordsUpdated) {
-    localStorage.setItem("oban-staff-passwords", JSON.stringify(passwordsDb));
-  }
-}
-
 let vendorsDb = getOrSetDB("oban-vendors", initialVendors);
 let poDb = getOrSetDB("oban-purchase-orders", initialPurchaseOrders);
 let billsDb = getOrSetDB("oban-bills", initialBills);
 let paymentsDb = getOrSetDB("oban-payments", initialPayments);
-
-// Dom elements
-const adminAuth = document.querySelector("#adminAuth");
-const adminDashboard = document.querySelector("#adminDashboard");
-const emailInput = document.querySelector("#emailInput");
-const passwordInput = document.querySelector("#passwordInput");
-const loginBtn = document.querySelector("#loginBtn");
-const logoutBtn = document.querySelector("#logoutBtn");
-const loginError = document.querySelector("#loginError");
 
 const metricSales = document.querySelector("#metricSales");
 const metricOrders = document.querySelector("#metricOrders");
@@ -1177,83 +1103,6 @@ const metricDispatched = document.querySelector("#metricDispatched");
 const ordersTableBody = document.querySelector("#ordersTableBody");
 const offlineOrderForm = document.querySelector("#offlineOrderForm");
 const orderSearchInput = document.querySelector("#orderSearchInput");
-
-// Authentication check
-const checkSession = () => {
-  const loggedIn = localStorage.getItem("oban-admin-logged-in");
-  const password = sessionStorage.getItem("oban-admin-password");
-  if (loggedIn === "true" && password) {
-    if (adminAuth) adminAuth.style.display = "none";
-    if (adminDashboard) adminDashboard.style.display = "block";
-    renderDashboard();
-  } else {
-    localStorage.removeItem("oban-admin-logged-in");
-    localStorage.removeItem("oban-admin-email");
-    localStorage.removeItem("oban-admin-role");
-    sessionStorage.removeItem("oban-admin-password");
-    if (adminAuth) adminAuth.style.display = "flex";
-    if (adminDashboard) adminDashboard.style.display = "none";
-  }
-};
-
-const triggerSubmit = (e) => {
-  if (e.key === "Enter") loginBtn.click();
-};
-
-if (loginBtn && emailInput && passwordInput) {
-  loginBtn.onclick = () => {
-    const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
-    const staff = staffDb.find(s => s.email === email);
-    
-    if (staff && passwordsDb[email] === password && staff.status === "active") {
-      localStorage.setItem("oban-admin-logged-in", "true");
-      localStorage.setItem("oban-admin-email", email);
-      localStorage.setItem("oban-admin-role", staff.role);
-      sessionStorage.setItem("oban-admin-password", password);
-      if (loginError) loginError.style.display = "none";
-      checkSession();
-    } else {
-      if (loginError) loginError.style.display = "block";
-    }
-  };
-  const triggerSubmit = (e) => {
-    if (e.key === "Enter") {
-      loginBtn.click();
-    }
-  };
-  emailInput.onkeydown = triggerSubmit;
-  passwordInput.onkeydown = triggerSubmit;
-}
-
-const forgotLink = document.querySelector("#forgotPasswordLink");
-if (forgotLink) {
-  forgotLink.onclick = (e) => {
-    e.preventDefault();
-    const email = prompt("Enter your staff email address to reset password:");
-    if (!email) return;
-    const normalized = email.trim().toLowerCase();
-    const staff = staffDb.find(s => s.email === normalized);
-    if (staff) {
-      const passwords = JSON.parse(localStorage.getItem("oban-staff-passwords")) || {};
-      passwords[normalized] = "ObanReset123!";
-      localStorage.setItem("oban-staff-passwords", JSON.stringify(passwords));
-      alert(`Password for ${normalized} has been reset to: ObanReset123!\nPlease log in and update your password.`);
-    } else {
-      alert("Staff email not found.");
-    }
-  };
-}
-
-if (logoutBtn) {
-  logoutBtn.onclick = () => {
-    localStorage.removeItem("oban-admin-logged-in");
-    localStorage.removeItem("oban-admin-email");
-    localStorage.removeItem("oban-admin-role");
-    sessionStorage.removeItem("oban-admin-password");
-    window.location.reload();
-  };
-}
 
 // Stage labels mapping
 const stageLabels = {
@@ -1372,6 +1221,17 @@ document.querySelectorAll(".purchases-nav-item").forEach(subtabBtn => {
 });
 
 // Dashboard rendering
+// New reference in the usual OB1234K shape that no loaded order already uses.
+function newOrderRef(existing) {
+  const taken = new Set((existing || []).map(o => String(o.ref || "").toUpperCase()));
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  let ref;
+  do {
+    ref = "OB" + Math.floor(1000 + Math.random() * 9000) + letters[Math.floor(Math.random() * letters.length)];
+  } while (taken.has(ref));
+  return ref;
+}
+
 function renderDashboard() {
   const allOrders = JSON.parse(localStorage.getItem("oban-orders")) || [];
   const periodSelect = document.querySelector("#dateFilter");
@@ -1382,10 +1242,10 @@ function renderDashboard() {
   // Search filter
   const q = orderSearchInput ? orderSearchInput.value.trim().toLowerCase() : "";
   if (q) {
-    filtered = filtered.filter(o => 
-      o.ref.toLowerCase().includes(q) || 
-      o.name.toLowerCase().includes(q) || 
-      o.piece.toLowerCase().includes(q)
+    filtered = filtered.filter(o =>
+      String(o.ref || "").toLowerCase().includes(q) ||
+      String(o.name || "").toLowerCase().includes(q) ||
+      String(o.piece || "").toLowerCase().includes(q)
     );
   }
 
@@ -1398,7 +1258,7 @@ function renderDashboard() {
   
   db.forEach((order) => {
     if (order.currentStage !== 9) { // Exclude Cancelled from total sales
-      totalRevenue += order.total;
+      totalRevenue += Number(order.total) || 0;
     }
     if (order.currentStage === 8) {
       dispatchedCount++;
@@ -1451,7 +1311,7 @@ function renderDashboard() {
       });
 
       // Strip "Size M" completely from display details
-      const cleanPiece = order.piece
+      const cleanPiece = String(order.piece || "")
         .replace(/\(?Size\s+[a-zA-Z0-9]+,?\s*\)?/gi, "")
         .replace(/\(\s*,\s*/g, "(")
         .replace(/\s*,\s*\)/g, ")")
@@ -1462,10 +1322,10 @@ function renderDashboard() {
 
       return `
         <tr>
-          <td><strong>${order.ref}</strong></td>
-          <td>${order.name}</td>
-          <td>${cleanPiece}${fabricBadge}${specs}</td>
-          <td>${order.date}</td>
+          <td><strong>${escapeHtml(order.ref)}</strong></td>
+          <td>${escapeHtml(order.name)}</td>
+          <td>${escapeHtml(cleanPiece)}${fabricBadge}${specs}</td>
+          <td>${escapeHtml(order.date)}</td>
           <td><strong>${formatNaira(order.total)}</strong></td>
           <td>
             <span class="status-badge ${badgeClass}">${stageText}</span>
@@ -1473,20 +1333,19 @@ function renderDashboard() {
           </td>
           <td>
             <div class="status-controller" style="display:flex;flex-direction:column;gap:4px;">
-              <select class="stage-select" data-index="${originalIndex}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
+              <select class="stage-select" data-ref="${escapeHtml(order.ref)}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
                 ${dropdownOptions}
               </select>
-              <select class="payment-pct-select" data-index="${originalIndex}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
+              <select class="payment-pct-select" data-ref="${escapeHtml(order.ref)}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
                 ${pctOptions}
               </select>
               <div style="display:flex;gap:4px;margin-top:4px;">
-                <button class="print-invoice-btn" data-ref="${order.ref}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Inv</button>
-                <button class="print-receipt-btn" data-ref="${order.ref}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Rec</button>
+                <button class="print-invoice-btn" data-ref="${escapeHtml(order.ref)}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Inv</button>
+                <button class="print-receipt-btn" data-ref="${escapeHtml(order.ref)}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Rec</button>
               </div>
               ${(function() {
-                const loggedInEmail = localStorage.getItem("oban-admin-email") || "";
-                const isSuperAdmin = loggedInEmail.toLowerCase() === "admin@obanwears.com" || loggedInEmail.toLowerCase() === "adminobanwears.com";
-                return isSuperAdmin ? `<button class="delete-order-btn" data-index="${originalIndex}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;margin-top:4px;width:100%;">Delete Order</button>` : "";
+                const canDelete = ["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "");
+                return canDelete ? `<button class="delete-order-btn" data-ref="${escapeHtml(order.ref)}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;margin-top:4px;width:100%;">Delete Order</button>` : "";
               })()}
             </div>
           </td>
@@ -1497,9 +1356,9 @@ function renderDashboard() {
     // Bind stage select dropdown change events
     ordersTableBody.querySelectorAll(".stage-select").forEach((select) => {
       select.onchange = (e) => {
-        const idx = +e.target.dataset.index;
         const newStage = +e.target.value;
-        const order = allOrders[idx];
+        const order = allOrders.find(x => x.ref === e.target.dataset.ref);
+        if (!order) return;
         const oldStage = order.currentStage;
         if (oldStage !== newStage) {
           order.currentStage = newStage;
@@ -1512,9 +1371,9 @@ function renderDashboard() {
     // Bind payment percentage select dropdown change events
     ordersTableBody.querySelectorAll(".payment-pct-select").forEach((select) => {
       select.onchange = (e) => {
-        const idx = +e.target.dataset.index;
         const newPct = +e.target.value;
-        const order = allOrders[idx];
+        const order = allOrders.find(x => x.ref === e.target.dataset.ref);
+        if (!order) return;
         const oldPct = order.paymentPercentage;
         if (oldPct !== newPct) {
           order.paymentPercentage = newPct;
@@ -1549,10 +1408,9 @@ function renderDashboard() {
     // Bind Delete Order button events
     ordersTableBody.querySelectorAll(".delete-order-btn").forEach((btn) => {
       btn.onclick = (e) => {
-        const idx = +e.target.dataset.index;
-        if (confirm("Are you sure you want to permanently delete this order?")) {
-          const allOrdersList = JSON.parse(localStorage.getItem("oban-orders")) || [];
-          allOrdersList.splice(idx, 1);
+        const ref = e.target.dataset.ref;
+        if (confirm(`Are you sure you want to permanently delete order ${ref}?`)) {
+          const allOrdersList = (JSON.parse(localStorage.getItem("oban-orders")) || []).filter(x => x.ref !== ref);
           localStorage.setItem("oban-orders", JSON.stringify(allOrdersList));
           renderDashboard();
         }
@@ -1620,7 +1478,7 @@ if (offlineOrderForm) {
     const total = +document.querySelector("#orderTotal").value;
     const stage = +document.querySelector("#orderStatus").value;
     
-    const ref = "OB" + Math.floor(1000 + Math.random() * 9000) + String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    const ref = newOrderRef(allOrders);
     const today = new Date();
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const dateStr = `${months[today.getMonth()]} ${today.getDate()} ${today.getFullYear()}`;
@@ -1650,8 +1508,7 @@ if (offlineOrderForm) {
       profiles[email.toLowerCase()] = {
         email: email,
         name: name,
-        whatsapp: whatsapp,
-        pin: "1234"
+        whatsapp: whatsapp
       };
       localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
     }
@@ -1722,15 +1579,15 @@ function renderCustomers() {
     
     return `
       <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${c.name}</strong></td>
-        <td style="padding:14px 12px;">${c.email}</td>
-        <td style="padding:14px 12px;">${c.whatsapp}</td>
+        <td style="padding:14px 12px;"><strong>${escapeHtml(c.name)}</strong></td>
+        <td style="padding:14px 12px;">${escapeHtml(c.email)}</td>
+        <td style="padding:14px 12px;">${escapeHtml(c.whatsapp)}</td>
         <td style="padding:14px 12px;color:var(--gold);font-weight:500;">${measurementsLabel}</td>
         <td style="padding:14px 12px;text-align:center;font-family:monospace;letter-spacing:0.1em;">${pin}</td>
         <td style="padding:14px 12px;"><strong>${formatNaira(c.totalSpend)}</strong></td>
         <td style="padding:14px 12px;text-align:center;">${c.ordersCount}</td>
         <td style="padding:14px 12px;">
-          <button class="reset-pin-btn" data-email="${c.email}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Reset PIN</button>
+          <button class="reset-pin-btn" data-email="${escapeHtml(c.email)}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Reset PIN</button>
         </td>
       </tr>
     `;
@@ -1747,7 +1604,7 @@ function renderCustomers() {
         }
         const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
         if (profiles[email]) {
-          profiles[email].pin = newPin;
+          profiles[email].newPin = newPin; // the server stores only a hash of it
           localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
           renderCustomers();
           alert("PIN updated successfully.");
@@ -1779,12 +1636,11 @@ if (exportCustomersBtn) {
       }
     });
 
-    let csv = "Customer Name,Email,WhatsApp,Saved Measurements,PIN,Total Spend,Orders Count\n";
+    let csv = "Customer Name,Email,WhatsApp,Saved Measurements,Total Spend,Orders Count\n";
     Object.values(customerMap).forEach(c => {
       const p = profiles[c.email.trim().toLowerCase()];
-      const pin = (p && p.pin) ? p.pin : "1234";
       const hasM = (p && p.measurements && p.measurements.neck) ? "Yes" : "No";
-      csv += `"${c.name.replace(/"/g,'""')}","${c.email}","${c.whatsapp}",${hasM},${pin},${c.totalSpend},${c.count}\n`;
+      csv += `"${c.name.replace(/"/g,'""')}","${c.email}","${c.whatsapp}",${hasM},${c.totalSpend},${c.count}\n`;
     });
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -1946,7 +1802,9 @@ async function appendUploadedImages(input, targetImages, renderPreview) {
       continue;
     }
     try {
-      targetImages.push(await compressImageFile(file));
+      // Stored once on the server; the garment keeps only the image URL.
+      const dataUrl = await compressImageFile(file);
+      targetImages.push(window.obanUploadImage ? await window.obanUploadImage(dataUrl) : dataUrl);
       renderPreview();
     } catch (err) {
       alert(`Could not upload ${file.name}. Please try another image.`);
@@ -1990,11 +1848,11 @@ function renderInventory() {
     return `
     <tr style="border-bottom:1px solid var(--line);">
       <td style="padding:10px 12px;vertical-align:middle;">${photoCell}</td>
-      <td style="padding:14px 12px;"><strong>${item.code || ""}</strong></td>
-      <td style="padding:14px 12px;">${item.name || ""}</td>
+      <td style="padding:14px 12px;"><strong>${escapeHtml(item.code)}</strong></td>
+      <td style="padding:14px 12px;">${escapeHtml(item.name)}</td>
       <td style="padding:14px 12px;"><span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;color:var(--ink);">${item.category || ""}</span></td>
       <td style="padding:14px 12px;"><strong>${formatNaira(item.price || 0)}</strong></td>
-      <td style="padding:14px 12px;font-size:12px;color:#8c867c;max-width:300px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${item.desc || item.description || ""}</td>
+      <td style="padding:14px 12px;font-size:12px;color:#8c867c;max-width:300px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escapeHtml(item.desc || item.description)}</td>
       <td style="padding:14px 12px;">
         <button class="toggle-featured-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="${isFeatured ? 'background:#d4af37;color:#111;border:none;font-weight:700;' : 'background:transparent;border:1px solid var(--line);color:#8c867c;'}font-size:10px;padding:4px 10px;border-radius:2px;cursor:pointer;">
           ${isFeatured ? '&#9733; Featured' : '&#9734; Standard'}
@@ -2003,7 +1861,7 @@ function renderInventory() {
       <td style="padding:14px 12px;">
         <div style="display:flex;gap:6px;">
           <button class="edit-inv-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Edit</button>
-          <button class="delete-inv-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Delete</button>
+          ${["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "") ? "" : "<!--"}<button class="delete-inv-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Delete</button>${["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "") ? "" : "-->"}
         </div>
       </td>
     </tr>
@@ -2307,15 +2165,15 @@ function renderBlogFeed() {
   articlesTableBody.innerHTML = list.map((art, idx) => {
     return `
       <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${art.title}</strong></td>
+        <td style="padding:14px 12px;"><strong>${escapeHtml(art.title)}</strong></td>
         <td style="padding:14px 12px;"><span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;color:var(--ink);">${art.category}</span></td>
         <td style="padding:14px 12px;">${art.date}</td>
-        <td style="padding:14px 12px;">${art.author}</td>
+        <td style="padding:14px 12px;">${escapeHtml(art.author)}</td>
         <td style="padding:14px 12px;">
           <div style="display:flex;gap:6px;flex-wrap:wrap;">
             <button class="edit-art-btn" data-index="${idx}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Edit</button>
             <button class="delete-art-btn" data-index="${idx}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Delete</button>
-            <button class="copy-art-link-btn" data-filename="${art.filename || ''}" data-title="${art.title}" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Copy Link</button>
+            <button class="copy-art-link-btn" data-filename="${art.filename || ''}" data-title="${escapeHtml(art.title)}" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Copy Link</button>
           </div>
         </td>
       </tr>
@@ -2446,96 +2304,7 @@ function resetBlogForm() {
 // -------------------------------------------------------------
 // STAFF SETTINGS TAB
 // -------------------------------------------------------------
-const staffTableBody = document.querySelector("#staffTableBody");
-const inviteStaffForm = document.querySelector("#inviteStaffForm");
-
-function renderStaff() {
-  if (!staffTableBody) return;
-  const list = JSON.parse(localStorage.getItem("oban-staff-members")) || [];
-  const loggedInEmail = localStorage.getItem("oban-admin-email") || "";
-  const loggedInRole = localStorage.getItem("oban-admin-role") || "";
-  
-  staffTableBody.innerHTML = list.map((staff, idx) => {
-    const isOwner = staff.email === "admin@obanwears.com";
-    
-    let roleCell = `<span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;color:var(--ink);text-transform:capitalize;">${staff.role}</span>`;
-    
-    if (loggedInRole === "admin" && !isOwner) {
-      roleCell = `
-        <select class="staff-role-select" data-index="${idx}" style="font-size:11px;padding:4px 8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;outline:none;">
-          <option value="admin" ${staff.role === "admin" ? "selected" : ""}>Admin</option>
-          <option value="manager" ${staff.role === "manager" ? "selected" : ""}>Manager</option>
-          <option value="editor" ${staff.role === "editor" ? "selected" : ""}>Editor</option>
-        </select>
-      `;
-    }
-    
-    return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${staff.email}</strong></td>
-        <td style="padding:14px 12px;">${roleCell}</td>
-        <td style="padding:14px 12px;"><span style="font-size:11px;color:${staff.status === "active" ? "#27ae60" : "#f39c12"};font-weight:bold;text-transform:uppercase;">${staff.status}</span></td>
-        <td style="padding:14px 12px;">
-          ${isOwner ? '<span style="font-size:10px;color:#8c867c;font-style:italic;">Primary Owner</span>' : `<button class="remove-staff-btn" data-index="${idx}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Revoke Access</button>`}
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  staffTableBody.querySelectorAll(".remove-staff-btn").forEach(btn => {
-    btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
-      if (confirm("Are you sure you want to revoke system credentials for this staff member?")) {
-        const list = JSON.parse(localStorage.getItem("oban-staff-members")) || [];
-        list.splice(idx, 1);
-        localStorage.setItem("oban-staff-members", JSON.stringify(list));
-        renderStaff();
-      }
-    };
-  });
-
-  staffTableBody.querySelectorAll(".staff-role-select").forEach(select => {
-    select.onchange = (e) => {
-      const idx = +e.target.dataset.index;
-      const newRole = e.target.value;
-      const list = JSON.parse(localStorage.getItem("oban-staff-members")) || [];
-      
-      list[idx].role = newRole;
-      localStorage.setItem("oban-staff-members", JSON.stringify(list));
-      
-      if (list[idx].email.toLowerCase() === loggedInEmail.toLowerCase()) {
-        localStorage.setItem("oban-admin-role", newRole);
-      }
-      
-      renderStaff();
-    };
-  });
-}
-
-if (inviteStaffForm) {
-  inviteStaffForm.onsubmit = (e) => {
-    e.preventDefault();
-    const list = JSON.parse(localStorage.getItem("oban-staff-members")) || [];
-    const email = document.querySelector("#inviteEmail").value.trim().toLowerCase();
-    const role = document.querySelector("#inviteRole").value;
-    
-    if (list.some(s => s.email === email)) {
-      alert("This staff email is already authorized.");
-      return;
-    }
-    
-    list.push({ email: email, role: role, status: "active" });
-    localStorage.setItem("oban-staff-members", JSON.stringify(list));
-    
-    const passwords = JSON.parse(localStorage.getItem("oban-staff-passwords")) || {};
-    passwords[email] = "ObanTemp123!";
-    localStorage.setItem("oban-staff-passwords", JSON.stringify(passwords));
-    
-    inviteStaffForm.reset();
-    renderStaff();
-    alert(`Access granted for ${email}!\nRole: ${role}\nTemporary Password: ObanTemp123!`);
-  };
-}
+// Staff accounts are managed on the server: see renderStaff in admin-sync.js.
 
 // -------------------------------------------------------------
 // PURCHASES MANAGEMENT TAB & DIALOGS
@@ -3096,7 +2865,7 @@ if (raiseCustomerInvoiceForm) {
       description += `${qty}x ${desc}`;
     });
 
-    const ref = "OB" + Math.floor(1000 + Math.random() * 9000) + String.fromCharCode(65 + Math.floor(Math.random() * 26));
+    const ref = newOrderRef(allOrders);
     const today = new Date();
     const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const dateStr = `${months[today.getMonth()]} ${today.getDate()} ${today.getFullYear()}`;
@@ -3147,8 +2916,7 @@ if (raiseCustomerInvoiceForm) {
   };
 }
 
-// Initialize on page load
-checkSession();
+// Sign-in and the first data load start from admin-sync.js.
 
 // Newsletter Subscribers Management
 function renderSubscribers() {
@@ -3172,17 +2940,19 @@ function renderSubscribers() {
       minute: "2-digit",
       second: "2-digit"
     });
-    const escapedEmail = sub.email.replace(/'/g, "\\'");
     return `
       <tr>
-        <td style="padding:14px 12px;"><strong>${sub.email}</strong></td>
+        <td style="padding:14px 12px;"><strong>${escapeHtml(sub.email)}</strong></td>
         <td style="padding:14px 12px;">${formattedDate}</td>
         <td style="padding:14px 12px; text-align:center;">
-          <button onclick="deleteSubscriber('${escapedEmail}')" style="background:#b03a2e;color:white;border:none;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;font-family:'Manrope';border-radius:2px;text-transform:uppercase;">Delete</button>
+          <button class="delete-subscriber-btn" data-email="${escapeHtml(sub.email)}" style="background:#b03a2e;color:white;border:none;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;font-family:'Manrope';border-radius:2px;text-transform:uppercase;">Delete</button>
         </td>
       </tr>
     `;
   }).join("");
+  tableBody.querySelectorAll(".delete-subscriber-btn").forEach(btn => {
+    btn.onclick = () => deleteSubscriber(btn.dataset.email);
+  });
 }
 
 function deleteSubscriber(email) {
@@ -3331,191 +3101,4 @@ window.deleteSubscriber = deleteSubscriber;
   }
 })();
 
-// -------------------------------------------------------------
-// LOCAL HOSTING DATABASE SYNCHRONIZATION
-// -------------------------------------------------------------
-const allowedKeys = [
-  "oban-products", "oban-orders", "oban-blog-articles", 
-  "oban-staff-members", "oban-staff-passwords", "oban-vendors", 
-  "oban-purchase-orders", "oban-bills", "oban-payments", "oban-subscribers"
-];
-
-function getAuthHeaders() {
-  const loggedInEmail = localStorage.getItem("oban-admin-email") || "";
-  const password = sessionStorage.getItem("oban-admin-password") || "";
-  return {
-    "Content-Type": "application/json",
-    "X-Admin-Email": loggedInEmail,
-    "X-Admin-Password": password
-  };
-}
-
-function getAdminApiUrl(key) {
-  const cleanKey = key.replace("oban-", "");
-  if (window.location.hostname.includes("obanwears") || window.location.hostname.includes("vercel.app") || window.location.protocol === "https:") {
-    return `/api/${cleanKey}`;
-  }
-  return `api.php?key=${key}`;
-}
-
-async function syncKeyToHosting(key, value) {
-  if (!allowedKeys.includes(key)) return;
-  try {
-    const res = await fetch(getAdminApiUrl(key), {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: value
-    });
-    if (!res.ok) {
-      console.error(`Sync failed for key ${key}`);
-    }
-  } catch (err) {
-    console.error(`Sync network error for key ${key}:`, err);
-  }
-}
-
-async function uploadBase64ToStorage(base64Str) {
-  try {
-    const res = await fetch("api.php?action=upload", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ image: base64Str })
-    });
-    if (!res.ok) {
-      throw new Error("Upload failed on server");
-    }
-    const result = await res.json();
-    return result.url;
-  } catch (err) {
-    console.error("Image upload network error:", err);
-    throw err;
-  }
-}
-
-// Override localStorage to intercept writes and sync automatically
-const memCache = {};
-const originalGetItem = localStorage.getItem;
-localStorage.getItem = function(key) {
-  if (memCache.hasOwnProperty(key)) {
-    return memCache[key];
-  }
-  return originalGetItem.apply(this, arguments);
-};
-
-const originalSetItem = localStorage.setItem;
-localStorage.setItem = function(key, value) {
-  memCache[key] = value;
-  let localSucceeded = false;
-  try {
-    originalSetItem.apply(this, arguments);
-    localSucceeded = true;
-  } catch (e) {
-    console.warn("Storage quota exceeded for key:", key, e);
-  }
-  
-  syncKeyToHosting(key, value);
-
-  if (!localSucceeded) {
-    throw new DOMException("Failed to execute 'setItem' on 'Storage': Setting the value exceeded the quota.", "QuotaExceededError");
-  }
-};
-
-function triggerUIRefresh(key, val) {
-  if (key === "oban-orders") {
-    db = val;
-    renderDashboard();
-  } else if (key === "oban-products") {
-    renderInventory();
-  } else if (key === "oban-blog-articles") {
-    renderBlogFeed();
-  } else if (key === "oban-staff-members") {
-    staffDb = val;
-    renderStaff();
-  } else if (key === "oban-vendors") {
-    vendorsDb = val;
-    renderVendors();
-  } else if (key === "oban-purchase-orders") {
-    poDb = val;
-    renderPurchaseOrdersList();
-  } else if (key === "oban-bills") {
-    billsDb = val;
-    renderBillsList();
-  } else if (key === "oban-payments") {
-    paymentsDb = val;
-    renderPaymentsList();
-  } else if (key === "oban-subscribers") {
-    renderSubscribers();
-  }
-}
-
-// Version polling cache
-let localVersions = {};
-
-let lastAdminCatalogHash = "";
-async function checkCloudUpdates() {
-  try {
-    const endpoint = getAdminApiUrl("oban-products");
-    const res = await fetch(endpoint);
-    if (!res.ok) return;
-    const cloudProducts = await res.json();
-    if (!cloudProducts || !Array.isArray(cloudProducts) || !cloudProducts.length) return;
-    
-    const newHash = JSON.stringify(cloudProducts.map(p => p.code + (p.price||0) + (p.featured||false) + (p.position||0)));
-    if (newHash !== lastAdminCatalogHash) {
-      lastAdminCatalogHash = newHash;
-      localStorage.setItem("oban-products", JSON.stringify(cloudProducts));
-      if (typeof renderInventory === "function") {
-        renderInventory();
-      }
-    }
-  } catch(e) {
-    console.warn("Admin cloud sync poll:", e);
-  }
-}
-
-let pollInterval = setInterval(checkCloudUpdates, 4000);
-checkCloudUpdates();
-
-// Admin UI bindings
-const firebaseStatusDot = document.querySelector("#firebaseStatusDot");
-const firebaseStatusText = document.querySelector("#firebaseStatusText");
-const firebaseActionsBlock = document.querySelector("#firebaseActionsBlock");
-const btnSyncLocalToCloud = document.querySelector("#btnSyncLocalToCloud");
-
-function updateFirebaseUI() {
-  if (firebaseStatusDot) firebaseStatusDot.style.background = "#27ae60";
-  if (firebaseStatusText) firebaseStatusText.textContent = "Connected to Hosting Server Database";
-  if (firebaseActionsBlock) firebaseActionsBlock.style.display = "block";
-  
-  const configJson = document.querySelector("#firebaseConfigJson");
-  if (configJson) {
-    configJson.value = "Your Oban Wears dashboard is automatically connected to your secure hosting database (api.php). No configuration credentials are required.";
-    configJson.disabled = true;
-  }
-  const configForm = document.querySelector("#firebaseConfigForm");
-  if (configForm) {
-    const submitBtn = configForm.querySelector("button[type='submit']");
-    if (submitBtn) submitBtn.style.display = "none";
-  }
-}
-
-if (btnSyncLocalToCloud) {
-  btnSyncLocalToCloud.textContent = "Force Sync Local Data to Server";
-  btnSyncLocalToCloud.onclick = async () => {
-    if (confirm("This will overwrite the server database files with your local browser cache database. Proceed?")) {
-      let count = 0;
-      for (const key of allowedKeys) {
-        const valStr = localStorage.getItem(key);
-        if (valStr) {
-          await syncKeyToHosting(key, valStr);
-          count++;
-        }
-      }
-      alert(`Successfully uploaded ${count} tables to your server!`);
-    }
-  };
-}
-
-// Initial Sync & UI Update
-checkCloudUpdates();
-updateFirebaseUI();
+// Saving and loading data is handled by admin-sync.js (per-record server sync).

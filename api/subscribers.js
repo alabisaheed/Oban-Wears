@@ -1,32 +1,15 @@
-// Vercel Serverless Endpoint for Oban Wears Newsletter Subscribers
-let subscribersStore = [];
+// Public newsletter sign-up: POST {email}. Listed and managed in the dashboard.
+const db = require("./_lib/db");
+const { handler, send, readBody, str, isEmail, HttpError } = require("./_lib/http");
 
-module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Admin-Email, X-Admin-Password");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+module.exports = handler({
+  POST: async (req, res) => {
+    const body = await readBody(req, 4 * 1024);
+    if (body.website) throw new HttpError(400, "Rejected"); // honeypot field for bots
+    const email = str(body.email, 120).toLowerCase();
+    if (!isEmail(email)) throw new HttpError(400, "Please enter a valid email address");
+    // createIfAbsent keeps the original sign-up date for repeat subscribers.
+    await db.createIfAbsent("subscribers", email, { email, timestamp: new Date().toISOString(), status: "Active" });
+    send(res, 201, { ok: true });
   }
-
-  if (req.method === "GET") {
-    return res.status(200).json(subscribersStore);
-  }
-
-  if (req.method === "POST") {
-    try {
-      const data = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
-      if (Array.isArray(data)) {
-        subscribersStore = data;
-      } else if (data && typeof data === "object") {
-        subscribersStore.unshift(data);
-      }
-      return res.status(200).json({ success: true });
-    } catch (err) {
-      return res.status(400).json({ error: "Invalid JSON payload" });
-    }
-  }
-
-  return res.status(405).json({ error: "Method not allowed" });
-};
+});

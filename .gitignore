@@ -19,3 +19,6 @@ Thumbs.db
 *.zip
 temp_dashboard
 temp_website
+
+# Local API data
+.data
