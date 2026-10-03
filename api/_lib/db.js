@@ -5,6 +5,9 @@
 // Local development without DATABASE_URL: a JSON file at .data/dev-db.json.
 // Tests (OBAN_TEST_PGLITE=1): an in-memory Postgres, to exercise the SQL.
 //
+// The database may be shared with other shops (Modeste Clothing uses the same
+// Neon database), so Oban's tables are prefixed: oban_records, oban_images.
+//
 // Every record lives in one table keyed by (collection, key), so saving one
 // record never touches another. Deletes leave a tombstone so dashboards can
 // fetch "everything that changed since X" instead of whole collections.
@@ -33,7 +36,7 @@ class DbError extends Error {
 // Postgres
 // ---------------------------------------------------------------------------
 const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS records (
+  `CREATE TABLE IF NOT EXISTS oban_records (
      collection TEXT NOT NULL,
      key TEXT NOT NULL,
      data JSONB NOT NULL,
@@ -41,8 +44,8 @@ const SCHEMA = [
      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
      PRIMARY KEY (collection, key)
    )`,
-  `CREATE INDEX IF NOT EXISTS records_changes ON records (collection, updated_at)`,
-  `CREATE TABLE IF NOT EXISTS images (
+  `CREATE INDEX IF NOT EXISTS oban_records_changes ON oban_records (collection, updated_at)`,
+  `CREATE TABLE IF NOT EXISTS oban_images (
      id TEXT PRIMARY KEY,
      type TEXT NOT NULL,
      data TEXT NOT NULL
@@ -102,30 +105,30 @@ async function run(fn) {
   }
 }
 
-const UPSERT_SQL = `INSERT INTO records (collection, key, data, deleted, updated_at)
+const UPSERT_SQL = `INSERT INTO oban_records (collection, key, data, deleted, updated_at)
   VALUES ($1, $2, $3::jsonb, FALSE, now())
   ON CONFLICT (collection, key) DO UPDATE SET data = EXCLUDED.data, deleted = FALSE, updated_at = now()`;
-const DELETE_SQL = `UPDATE records SET deleted = TRUE, data = '{}'::jsonb, updated_at = now()
+const DELETE_SQL = `UPDATE oban_records SET deleted = TRUE, data = '{}'::jsonb, updated_at = now()
   WHERE collection = $1 AND key = $2 AND NOT deleted`;
-const IMAGE_SQL = `INSERT INTO images (id, type, data) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`;
+const IMAGE_SQL = `INSERT INTO oban_images (id, type, data) VALUES ($1, $2, $3) ON CONFLICT (id) DO NOTHING`;
 
 const sqlBackend = {
   async list(collection) {
     return run(async (c) => {
-      const rows = await c.query("SELECT key, data FROM records WHERE collection = $1 AND NOT deleted", [collection]);
+      const rows = await c.query("SELECT key, data FROM oban_records WHERE collection = $1 AND NOT deleted", [collection]);
       return Object.fromEntries(rows.map((r) => [r.key, r.data]));
     });
   },
   async get(collection, key) {
     return run(async (c) => {
-      const rows = await c.query("SELECT data FROM records WHERE collection = $1 AND key = $2 AND NOT deleted", [collection, String(key)]);
+      const rows = await c.query("SELECT data FROM oban_records WHERE collection = $1 AND key = $2 AND NOT deleted", [collection, String(key)]);
       return rows.length ? rows[0].data : null;
     });
   },
   async findByField(collection, field, value) {
     return run(async (c) => {
       const rows = await c.query(
-        "SELECT data FROM records WHERE collection = $1 AND NOT deleted AND lower(trim(data->>$2)) = lower(trim($3))",
+        "SELECT data FROM oban_records WHERE collection = $1 AND NOT deleted AND lower(trim(data->>$2)) = lower(trim($3))",
         [collection, field, String(value)]
       );
       return rows.map((r) => r.data);
@@ -140,10 +143,10 @@ const sqlBackend = {
   async createIfAbsent(collection, key, record) {
     return run(async (c) => {
       const rows = await c.query(
-        `INSERT INTO records (collection, key, data, deleted, updated_at)
+        `INSERT INTO oban_records (collection, key, data, deleted, updated_at)
          VALUES ($1, $2, $3::jsonb, FALSE, now())
          ON CONFLICT (collection, key) DO UPDATE SET data = EXCLUDED.data, deleted = FALSE, updated_at = now()
-         WHERE records.deleted
+         WHERE oban_records.deleted
          RETURNING key`,
         [collection, String(key), JSON.stringify(record)]
       );
@@ -165,8 +168,8 @@ const sqlBackend = {
       const [nowRows, rows] = await c.transaction([
         { text: "SELECT now() AS now" },
         since
-          ? { text: "SELECT collection, key, data, deleted FROM records WHERE collection = ANY($1::text[]) AND updated_at > $2::timestamptz", params: [collections, since] }
-          : { text: "SELECT collection, key, data, deleted FROM records WHERE collection = ANY($1::text[]) AND NOT deleted", params: [collections] }
+          ? { text: "SELECT collection, key, data, deleted FROM oban_records WHERE collection = ANY($1::text[]) AND updated_at > $2::timestamptz", params: [collections, since] }
+          : { text: "SELECT collection, key, data, deleted FROM oban_records WHERE collection = ANY($1::text[]) AND NOT deleted", params: [collections] }
       ]);
       const cursor = new Date(new Date(nowRows[0].now).getTime() - CURSOR_OVERLAP_MS).toISOString();
       return { cursor, rows };
@@ -178,7 +181,7 @@ const sqlBackend = {
     const entries = Object.entries(records);
     if (!entries.length) return [];
     const results = await run((c) => c.transaction(entries.map(([key, record]) => ({
-      text: `INSERT INTO records (collection, key, data, deleted, updated_at)
+      text: `INSERT INTO oban_records (collection, key, data, deleted, updated_at)
              VALUES ($1, $2, $3::jsonb, FALSE, now())
              ON CONFLICT (collection, key) DO NOTHING RETURNING key`,
       params: [collection, String(key), JSON.stringify(record)]
@@ -187,13 +190,13 @@ const sqlBackend = {
   },
   async count(collection) {
     return run(async (c) => {
-      const rows = await c.query("SELECT count(*)::int AS n FROM records WHERE collection = $1 AND NOT deleted", [collection]);
+      const rows = await c.query("SELECT count(*)::int AS n FROM oban_records WHERE collection = $1 AND NOT deleted", [collection]);
       return rows[0].n;
     });
   },
   async getImage(id) {
     return run(async (c) => {
-      const rows = await c.query("SELECT type, data FROM images WHERE id = $1", [id]);
+      const rows = await c.query("SELECT type, data FROM oban_images WHERE id = $1", [id]);
       return rows.length ? rows[0] : null;
     });
   }
