@@ -25,17 +25,17 @@
   "redirects": [
     {
       "source": "/cpanel",
-      "destination": "https://obanwears.com:2083",
+      "destination": "https://mail.obanwears.com:2083",
       "permanent": false
     },
     {
       "source": "/webmail",
-      "destination": "https://obanwears.com:2096",
+      "destination": "https://mail.obanwears.com:2096",
       "permanent": false
     },
     {
       "source": "/whm",
-      "destination": "https://obanwears.com:2087",
+      "destination": "https://mail.obanwears.com:2087",
       "permanent": false
     }
   ],
@@ -47,6 +47,46 @@
     {
       "source": "/admin",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/obpk",
+      "destination": "https://mail.obanwears.com/obpk/"
+    },
+    {
+      "source": "/obku",
+      "destination": "https://mail.obanwears.com/obku/"
+    },
+    {
+      "source": "/obtu",
+      "destination": "https://mail.obanwears.com/obtu/"
+    },
+    {
+      "source": "/wp-content/:path*",
+      "destination": "https://mail.obanwears.com/wp-content/:path*"
+    },
+    {
+      "source": "/wp-includes/:path*",
+      "destination": "https://mail.obanwears.com/wp-includes/:path*"
+    },
+    {
+      "source": "/wp-admin/:path*",
+      "destination": "https://mail.obanwears.com/wp-admin/:path*"
+    },
+    {
+      "source": "/wp-json/:path*",
+      "destination": "https://mail.obanwears.com/wp-json/:path*"
+    },
+    {
+      "source": "/wp-login.php",
+      "destination": "https://mail.obanwears.com/wp-login.php"
+    },
+    {
+      "source": "/wp-cron.php",
+      "destination": "https://mail.obanwears.com/wp-cron.php"
+    },
+    {
+      "source": "/xmlrpc.php",
+      "destination": "https://mail.obanwears.com/xmlrpc.php"
     },
     {
       "source": "/:path*",
