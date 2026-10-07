@@ -20,7 +20,7 @@ async function sendViaResend(message) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: MAIL_FROM, to: [message.to], subject: message.subject, text: message.text })
+    body: JSON.stringify({ from: MAIL_FROM, to: [message.to], subject: message.subject, text: message.text, ...(message.replyTo ? { reply_to: message.replyTo } : {}) })
   });
   if (!res.ok) throw new Error(`Resend responded ${res.status}: ${(await res.text()).slice(0, 200)}`);
 }
@@ -37,7 +37,7 @@ async function sendViaSmtp(message) {
     greetingTimeout: 10000,
     socketTimeout: 15000
   });
-  await transport.sendMail({ from: MAIL_FROM, to: message.to, subject: message.subject, text: message.text });
+  await transport.sendMail({ from: MAIL_FROM, to: message.to, subject: message.subject, text: message.text, ...(message.replyTo ? { replyTo: message.replyTo } : {}) });
 }
 
 async function send(message) {
@@ -97,4 +97,30 @@ async function sendTest(to) {
   return { via: process.env.RESEND_API_KEY ? "Resend" : `SMTP ${process.env.SMTP_HOST}` };
 }
 
-module.exports = { sendLoginCode, sendTest, configured, outbox };
+// New contact-form enquiry: alert the shop. Never blocks saving the enquiry.
+async function sendEnquiryNotice(enquiry) {
+  const to = (process.env.ENQUIRY_EMAIL || String(process.env.ADMIN_EMAILS || "").split(",")[0] || "").trim();
+  if (!to) return false;
+  try {
+    await send({
+      to,
+      replyTo: enquiry.email,
+      subject: `New enquiry: ${enquiry.subject} from ${enquiry.name}`,
+      text: [
+        `${enquiry.name} <${enquiry.email}> sent a message from the website contact form.`,
+        "",
+        `Subject: ${enquiry.subject}`,
+        "",
+        enquiry.message,
+        "",
+        `Reference ${enquiry.ref}. Reply to this email to answer the customer, or open Messages in the dashboard.`
+      ].join("\n")
+    });
+    return true;
+  } catch (err) {
+    console.error("Enquiry notice failed:", err);
+    return false;
+  }
+}
+
+module.exports = { sendLoginCode, sendTest, sendEnquiryNotice, configured, outbox };

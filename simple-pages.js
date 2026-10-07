@@ -1,6 +1,42 @@
 const menuButton=document.querySelector("#menuButton"),mobileNav=document.querySelector("#mobileNav");
 if(menuButton&&mobileNav)menuButton.onclick=()=>mobileNav.classList.toggle("open");
-const contact=document.querySelector("#contactForm");if(contact)contact.onsubmit=e=>{e.preventDefault();document.querySelector("#contactMessage").textContent="Thank you. Your enquiry is ready to be connected to your email service.";contact.reset()};
+// Contact form: saved for the team (dashboard → Messages) and emailed to the shop.
+const contact = document.querySelector("#contactForm");
+if (contact) {
+  // Hidden field that only bots fill in.
+  const trap = document.createElement("input");
+  trap.type = "text";
+  trap.name = "website";
+  trap.tabIndex = -1;
+  trap.autocomplete = "off";
+  trap.setAttribute("aria-hidden", "true");
+  trap.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;opacity:0;";
+  contact.appendChild(trap);
+
+  contact.onsubmit = async (e) => {
+    e.preventDefault();
+    const note = document.querySelector("#contactMessage");
+    const button = contact.querySelector("button[type=submit]");
+    const value = (id) => (document.querySelector(`#${id}`)?.value || "").trim();
+    if (button) button.disabled = true;
+    if (note) note.textContent = "Sending your message…";
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "enquiry", name: value("name"), email: value("email"), subject: value("subject"), message: value("message"), website: trap.value })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Your message could not be sent. Please try again.");
+      if (note) note.textContent = "Thank you. Your message has reached the Oban Wears team; we will reply by email shortly.";
+      contact.reset();
+    } catch (err) {
+      if (note) note.textContent = err.message || "Your message could not be sent. Please try again or message us on WhatsApp.";
+    } finally {
+      if (button) button.disabled = false;
+    }
+  };
+}
 
 // Counter animation for stats metrics
 const stats = document.querySelectorAll(".stat-num");

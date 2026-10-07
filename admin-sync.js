@@ -29,6 +29,8 @@
     "oban-blog-articles": { collection: "articles", shape: "array", keyOf: (a) => a && (a.id || a.filename), ordered: true },
     "oban-subscribers": { collection: "subscribers", shape: "object", normalizeKey: (k) => String(k).trim().toLowerCase() },
     "oban-client-profiles": { collection: "profiles", shape: "object", normalizeKey: (k) => String(k).trim().toLowerCase() },
+    "oban-enquiries": { collection: "enquiries", shape: "array", keyOf: (e) => e && e.ref },
+    "oban-comments": { collection: "comments", shape: "array", keyOf: (c) => c && c.id },
     "oban-vendors": { collection: "vendors", shape: "array", keyOf: (v) => v && (v.id || v.name), roles: ["admin", "manager"] },
     "oban-purchase-orders": { collection: "purchaseOrders", shape: "array", keyOf: (x) => x && x.id, roles: ["admin", "manager"] },
     "oban-bills": { collection: "bills", shape: "array", keyOf: (x) => x && x.id, roles: ["admin", "manager"] },
@@ -43,12 +45,14 @@
     "oban-blog-articles": ["renderBlogFeed"],
     "oban-subscribers": ["renderSubscribers"],
     "oban-client-profiles": ["renderCustomers"],
+    "oban-enquiries": ["renderEnquiries"],
+    "oban-comments": ["renderBlogComments"],
     "oban-vendors": ["renderPurchases"],
     "oban-purchase-orders": ["renderPurchases"],
     "oban-bills": ["renderPurchases"],
     "oban-payments": ["renderPurchases"]
   };
-  const ALL_RENDERERS = ["renderDashboard", "renderCustomers", "renderInventory", "renderBlogFeed", "renderPurchases", "renderSubscribers", "renderStaff"];
+  const ALL_RENDERERS = ["renderDashboard", "renderCustomers", "renderInventory", "renderBlogFeed", "renderPurchases", "renderSubscribers", "renderStaff", "renderEnquiries", "renderBlogComments"];
 
   const ls = window.localStorage;
   const nativeGetItem = Storage.prototype.getItem;

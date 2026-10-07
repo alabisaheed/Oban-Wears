@@ -218,6 +218,26 @@ server.listen(0, async () => {
     check("single article has its text", one.status === 200 && one.body.content === "Line one", one.body);
     check("unknown article is 404", (await call("/api/articles?id=nope")).status === 404);
 
+    // ---- Contact form and blog comments
+    const before = mail.outbox.length;
+    const enq = await call("/api/content", { method: "POST", body: { type: "enquiry", name: "Kemi", email: "kemi@example.com", subject: "Sizing assistance", message: "What size fits a 42 chest?" } });
+    check("contact form saves an enquiry", enq.status === 201 && /^ENQ-\d{6}$/.test(enq.body.ref), enq.body);
+    check("enquiry is emailed to the shop", mail.outbox.length === before + 1 && mail.outbox[before].replyTo === "kemi@example.com" && mail.outbox[before].to === "owner@oban.test", mail.outbox[before]);
+    const enqs = (await call("/api/admin?c=enquiries", { token: admin })).body.changes.enquiries.upsert;
+    check("enquiry visible in dashboard", enqs[enq.body.ref] && enqs[enq.body.ref].status === "New", enqs);
+    check("too-quick second message refused", (await call("/api/content", { method: "POST", body: { type: "enquiry", name: "Kemi", email: "kemi@example.com", message: "again" } })).status === 429);
+    check("spam enquiry refused", (await call("/api/content", { method: "POST", body: { type: "enquiry", name: "X", email: "x@example.org", message: "cheap crypto http://a.com http://b.com" } })).status === 400);
+    check("bot field silently ignored", (await call("/api/content", { method: "POST", body: { type: "enquiry", website: "bot", name: "B", email: "b@example.com", message: "hi" } })).status === 201);
+
+    const com = await call("/api/content", { method: "POST", body: { type: "comment", articleId: "why-kaftan", articleTitle: "Why Kaftan", name: "Tobi", email: "tobi@example.com", text: "Great read!" } });
+    check("comment accepted for approval", com.status === 201 && com.body.pending, com.body);
+    check("unapproved comment hidden", (await call("/api/content?type=comments&article=why-kaftan")).body.length === 0);
+    const coms = (await call("/api/admin?c=comments", { token: admin })).body.changes.comments.upsert;
+    const cid = Object.keys(coms)[0];
+    await call("/api/admin", { method: "POST", token: admin, body: { c: "comments", upsert: { [cid]: { ...coms[cid], approved: true, replies: [{ name: "Oban Wears", text: "Thank you", date: "Today" }] } } } });
+    const shown = (await call("/api/content?type=comments&article=why-kaftan")).body;
+    check("approved comment and reply shown", shown.length === 1 && shown[0].replies[0].text === "Thank you" && shown[0].email === undefined, shown);
+
     // ---- Codes can be switched off in an emergency
     process.env.LOGIN_OTP = "off";
     const direct = await call("/api/auth", { method: "POST", body: { action: "login", email: "tailor@oban.test", password: "new-tailor-password" } });

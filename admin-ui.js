@@ -52,12 +52,13 @@
   // Sections
   // ------------------------------------------------------------------------
   const TITLES = {
-    overview: "Dashboard", orders: "Orders", customers: "Customers", inventory: "Inventory",
+    overview: "Dashboard", orders: "Orders", customers: "Customers", enquiries: "Messages", comments: "Comments", inventory: "Inventory",
     purchases: "Purchases", blog: "Blog", subscribers: "Subscribers", staff: "Staff", database: "Settings"
   };
   const RENDER_ON_OPEN = {
     overview: ["renderDashboard"], orders: ["renderDashboard"], customers: ["renderCustomers"], inventory: ["renderInventory"],
-    purchases: ["renderPurchases"], blog: ["renderBlogFeed"], subscribers: ["renderSubscribers"], staff: ["renderStaff"]
+    purchases: ["renderPurchases"], blog: ["renderBlogFeed"], subscribers: ["renderSubscribers"], staff: ["renderStaff"],
+    enquiries: ["renderEnquiries"], comments: ["renderBlogComments"]
   };
   const panelId = (name) => "tab" + name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -236,8 +237,12 @@
     const subscribers = Object.keys(read("oban-subscribers", {})).length;
     const articles = read("oban-blog-articles", []).length;
     const owed = awaiting.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    const newMessages = read("oban-enquiries", []).filter((e) => (e.status || "New") === "New").length;
+    const pendingComments = read("oban-comments", []).filter((c) => c.approved !== true).length;
     const glance = [
       ["money", naira(owed), "awaiting payment"],
+      ["message", newMessages, `new message${newMessages === 1 ? "" : "s"} from the contact form`],
+      ["comment", pendingComments, `comment${pendingComments === 1 ? "" : "s"} awaiting approval`],
       ["customers", customers, `customer${customers === 1 ? "" : "s"}`],
       ["mail", subscribers, `newsletter subscriber${subscribers === 1 ? "" : "s"}`],
       ["blog", articles, `blog article${articles === 1 ? "" : "s"}`],
@@ -252,8 +257,142 @@
     if (navOrders) navOrders.textContent = orders.filter((o) => Number(o.currentStage) === 1).length || "";
     const navInv = $("#navCountInventory");
     if (navInv) navInv.textContent = products.length || "";
+    const navMsg = $("#navCountEnquiries");
+    if (navMsg) navMsg.textContent = newMessages || "";
+    const navCom = $("#navCountComments");
+    if (navCom) navCom.textContent = pendingComments || "";
   }
   window.renderOverview = renderOverview;
+
+  // ------------------------------------------------------------------------
+  // Messages (contact form) and blog comments
+  // ------------------------------------------------------------------------
+  const newestFirst = (a, b) => (Date.parse(b.createdAt || b.date) || 0) - (Date.parse(a.createdAt || a.date) || 0);
+  const canDelete = () => ["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "");
+
+  function saveList(key, list) {
+    localStorage.setItem(key, JSON.stringify(list));
+  }
+
+  function updateEnquiry(ref, changes) {
+    const list = read("oban-enquiries", []);
+    const item = list.find((e) => e.ref === ref);
+    if (!item) return;
+    Object.assign(item, changes);
+    saveList("oban-enquiries", list);
+    window.renderEnquiries();
+  }
+
+  window.renderEnquiries = function () {
+    const body = $("#enquiriesTableBody");
+    if (!body) return;
+    const all = read("oban-enquiries", []).sort(newestFirst);
+    const q = ($("#enquirySearchInput")?.value || "").trim().toLowerCase();
+    const status = $("#enquiryStatusFilter")?.value || "";
+    const list = all.filter((e) => (!status || (e.status || "New") === status) &&
+      (!q || `${e.name} ${e.email} ${e.subject} ${e.message}`.toLowerCase().includes(q)));
+    if (!list.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">${all.length ? "No messages match these filters." : "No messages yet. Contact form messages appear here."}</td></tr>`;
+      renderOverview();
+      return;
+    }
+    const tone = { New: "st-1", Replied: "badge-ok", Closed: "badge-off" };
+    body.innerHTML = list.map((e) => {
+      const st = e.status || "New";
+      const mailto = `mailto:${encodeURIComponent(e.email)}?subject=${encodeURIComponent("Re: " + (e.subject || "Your message to Oban Wears"))}&body=${encodeURIComponent(`\n\n---\nOn ${e.date}, ${e.name} wrote:\n${e.message}`)}`;
+      return `
+        <tr>
+          <td><span class="cell-main">${esc(e.name)}</span><span class="cell-sub">${esc(e.email)}</span></td>
+          <td>${esc(e.subject)}<span class="cell-sub">${esc(e.ref)}</span></td>
+          <td><div class="msg-text">${esc(e.message)}</div></td>
+          <td class="nowrap">${esc(e.date)}</td>
+          <td><span class="badge ${tone[st] || ""}">${esc(st)}</span></td>
+          <td><div class="acts">
+            <a class="act act-text enq-reply" data-ref="${esc(e.ref)}" href="${mailto}" title="Reply by email">${icon("reply")}Reply</a>
+            ${st !== "Closed" ? `<button type="button" class="act enq-close" data-ref="${esc(e.ref)}" title="Mark as done" aria-label="Mark as done">${icon("check")}</button>` : ""}
+            ${canDelete() ? `<button type="button" class="act act-danger enq-delete" data-ref="${esc(e.ref)}" title="Delete message" aria-label="Delete message">${icon("trash")}</button>` : ""}
+          </div></td>
+        </tr>`;
+    }).join("");
+    $$(".enq-reply", body).forEach((a) => a.addEventListener("click", () => {
+      const e = all.find((x) => x.ref === a.dataset.ref);
+      if (e && (e.status || "New") === "New") setTimeout(() => updateEnquiry(a.dataset.ref, { status: "Replied", repliedAt: new Date().toISOString() }), 300);
+    }));
+    $$(".enq-close", body).forEach((b) => { b.onclick = () => updateEnquiry(b.dataset.ref, { status: "Closed" }); });
+    $$(".enq-delete", body).forEach((b) => {
+      b.onclick = () => {
+        if (!confirm("Delete this message? This cannot be undone.")) return;
+        saveList("oban-enquiries", read("oban-enquiries", []).filter((e) => e.ref !== b.dataset.ref));
+        window.renderEnquiries();
+      };
+    });
+    renderOverview();
+  };
+
+  function updateComment(id, change) {
+    const list = read("oban-comments", []);
+    const item = list.find((c) => c.id === id);
+    if (!item) return;
+    change(item);
+    saveList("oban-comments", list);
+    window.renderBlogComments();
+  }
+
+  window.renderBlogComments = function () {
+    const body = $("#commentsTableBody");
+    if (!body) return;
+    const all = read("oban-comments", []).sort(newestFirst);
+    const filter = $("#commentStatusFilter")?.value ?? "pending";
+    const list = all.filter((c) => !filter || (filter === "pending" ? c.approved !== true : c.approved === true));
+    if (!list.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">${filter === "pending" ? "No comments waiting for approval." : "No comments yet."}</td></tr>`;
+      renderOverview();
+      return;
+    }
+    body.innerHTML = list.map((c) => {
+      const replies = (c.replies || []).map((r) => `<div class="reply-line">${icon("reply")}<span>${esc(r.text)}</span></div>`).join("");
+      return `
+        <tr>
+          <td><span class="cell-main">${esc(c.name)}</span><span class="cell-sub">${esc(c.email)}</span></td>
+          <td><div class="clip" title="${esc(c.articleTitle || c.articleId)}">${esc(c.articleTitle || c.articleId)}</div></td>
+          <td><div class="msg-text">${esc(c.text)}</div>${replies}</td>
+          <td class="nowrap">${esc(c.date)}</td>
+          <td><span class="badge ${c.approved ? "badge-ok" : "st-1"}">${c.approved ? "Approved" : "Waiting"}</span></td>
+          <td><div class="acts">
+            ${c.approved
+              ? `<button type="button" class="act act-text com-hide" data-id="${esc(c.id)}" title="Remove from the website">${icon("close")}Hide</button>`
+              : `<button type="button" class="act act-text act-on com-approve" data-id="${esc(c.id)}" title="Show on the website">${icon("check")}Approve</button>`}
+            <button type="button" class="act act-text com-reply" data-id="${esc(c.id)}" title="Reply as Oban Wears">${icon("reply")}Reply</button>
+            <button type="button" class="act act-danger com-delete" data-id="${esc(c.id)}" title="Delete comment" aria-label="Delete comment">${icon("trash")}</button>
+          </div></td>
+        </tr>`;
+    }).join("");
+    $$(".com-approve", body).forEach((b) => { b.onclick = () => updateComment(b.dataset.id, (c) => { c.approved = true; c.approvedAt = new Date().toISOString(); }); });
+    $$(".com-hide", body).forEach((b) => { b.onclick = () => updateComment(b.dataset.id, (c) => { c.approved = false; }); });
+    $$(".com-reply", body).forEach((b) => {
+      b.onclick = () => {
+        const text = prompt("Your reply, shown under this comment as Oban Wears. Replying also approves the comment.");
+        if (!text || !text.trim()) return;
+        const date = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+        updateComment(b.dataset.id, (c) => {
+          c.replies = [...(c.replies || []), { name: "Oban Wears", text: text.trim().slice(0, 2000), date }];
+          c.approved = true;
+        });
+      };
+    });
+    $$(".com-delete", body).forEach((b) => {
+      b.onclick = () => {
+        if (!confirm("Delete this comment? This cannot be undone.")) return;
+        saveList("oban-comments", read("oban-comments", []).filter((c) => c.id !== b.dataset.id));
+        window.renderBlogComments();
+      };
+    });
+    renderOverview();
+  };
+
+  $("#enquirySearchInput")?.addEventListener("input", () => window.renderEnquiries());
+  $("#enquiryStatusFilter")?.addEventListener("change", () => window.renderEnquiries());
+  $("#commentStatusFilter")?.addEventListener("change", () => window.renderBlogComments());
 
   // Inventory summary strip (called by renderInventory)
   window.renderInventoryStats = function (products) {

@@ -42,8 +42,8 @@
   <meta name="description" content="Oban Wears Admin Dashboard Portal for staff tracking and updates.">
   <title>Dashboard | Oban Wears</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="admin-login.css?v=20261007e">
-  <link rel="stylesheet" href="admin-app.css?v=20261007e">
+  <link rel="stylesheet" href="admin-login.css?v=20261007f">
+  <link rel="stylesheet" href="admin-app.css?v=20261007f">
   <link rel="manifest" href="/dashboard.webmanifest">
   <meta name="theme-color" content="#080806">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -95,6 +95,9 @@
       <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z"/></symbol>
       <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></symbol>
       <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+      <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9h8M8 13h5"/></symbol>
+      <symbol id="i-comment" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+      <symbol id="i-reply" viewBox="0 0 24 24"><path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
       <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/></symbol>
     </defs>
@@ -209,11 +212,13 @@
           <p class="adm-nav-label">Sales</p>
           <button class="admin-tab" data-tab="orders" id="tabBtnOrders"><svg class="ic"><use href="#i-orders"/></svg><span>Orders</span><em class="adm-nav-count" id="navCountOrders"></em></button>
           <button class="admin-tab" data-tab="customers" id="tabBtnCustomers"><svg class="ic"><use href="#i-customers"/></svg><span>Customers</span></button>
+          <button class="admin-tab" data-tab="enquiries" id="tabBtnEnquiries"><svg class="ic"><use href="#i-message"/></svg><span>Messages</span><em class="adm-nav-count" id="navCountEnquiries"></em></button>
           <p class="adm-nav-label">Stock</p>
           <button class="admin-tab" data-tab="inventory" id="tabBtnInventory"><svg class="ic"><use href="#i-inventory"/></svg><span>Inventory</span><em class="adm-nav-count" id="navCountInventory"></em></button>
           <button class="admin-tab" data-tab="purchases" id="tabBtnPurchases"><svg class="ic"><use href="#i-purchases"/></svg><span>Purchases</span></button>
           <p class="adm-nav-label">Content</p>
           <button class="admin-tab" data-tab="blog" id="tabBtnBlog"><svg class="ic"><use href="#i-blog"/></svg><span>Blog</span></button>
+          <button class="admin-tab" data-tab="comments" id="tabBtnComments"><svg class="ic"><use href="#i-comment"/></svg><span>Comments</span><em class="adm-nav-count" id="navCountComments"></em></button>
           <button class="admin-tab" data-tab="subscribers" id="tabBtnSubscribers"><svg class="ic"><use href="#i-mail"/></svg><span>Subscribers</span></button>
           <p class="adm-nav-label">Team</p>
           <button class="admin-tab" data-tab="staff" id="tabBtnStaff"><svg class="ic"><use href="#i-staff"/></svg><span>Staff</span></button>
@@ -342,6 +347,26 @@
             </div>
           </section>
 
+          <!-- Messages from the contact form -->
+          <section id="tabEnquiries" class="adm-panel" hidden>
+            <div class="toolbar">
+              <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="search" id="enquirySearchInput" placeholder="Search name, email or message"></label>
+              <label class="adm-select-wrap"><svg class="ic"><use href="#i-tag"/></svg>
+                <select id="enquiryStatusFilter" aria-label="Filter by status">
+                  <option value="">All messages</option>
+                  <option value="New">New</option>
+                  <option value="Replied">Replied</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </label>
+            </div>
+            <p class="hint">Messages sent from the Contact page. Each one is also emailed to the shop; reply from your email or with the Reply button.</p>
+            <div class="card card-flush"><div class="table-scroll"><table class="tbl">
+              <thead><tr><th>From</th><th>Subject</th><th>Message</th><th>Received</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="enquiriesTableBody"></tbody>
+            </table></div></div>
+          </section>
+
           <!-- Inventory -->
           <section id="tabInventory" class="adm-panel" hidden>
             <div class="stat-strip" id="invStats"></div>
@@ -451,6 +476,24 @@
                 </table></div>
               </div>
             </div>
+          </section>
+
+          <!-- Blog comments awaiting approval -->
+          <section id="tabComments" class="adm-panel" hidden>
+            <div class="toolbar">
+              <label class="adm-select-wrap"><svg class="ic"><use href="#i-tag"/></svg>
+                <select id="commentStatusFilter" aria-label="Filter comments">
+                  <option value="pending">Awaiting approval</option>
+                  <option value="approved">Approved</option>
+                  <option value="">All comments</option>
+                </select>
+              </label>
+              <p class="hint hint-inline">Comments appear on the blog only after you approve them. Replies show under the comment as Oban Wears.</p>
+            </div>
+            <div class="card card-flush"><div class="table-scroll"><table class="tbl">
+              <thead><tr><th>From</th><th>Article</th><th>Comment</th><th>Received</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="commentsTableBody"></tbody>
+            </table></div></div>
           </section>
 
           <!-- Subscribers -->
@@ -713,8 +756,8 @@
   <div class="toast-stack" id="admToasts" aria-live="polite"></div>
 
   <script src="print-utility.js"></script>
-  <script src="admin-sync.js?v=20261007e"></script>
-  <script src="admin.js?v=20261007e"></script>
-  <script src="admin-ui.js?v=20261007e"></script>
+  <script src="admin-sync.js?v=20261007f"></script>
+  <script src="admin.js?v=20261007f"></script>
+  <script src="admin-ui.js?v=20261007f"></script>
 </body>
 </html>

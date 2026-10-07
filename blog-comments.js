@@ -1,6 +1,6 @@
 /**
  * Oban Wears - Premium Blog Comments & Excerpt Sidebar System
- * Fully Responsive, Client-Side Persistence, Honey-pot / Captcha Bot Security, and Author/Admin Replies
+ * Comments are saved on the server and shown after approval in the dashboard (Comments).
  */
 
 (function() {
@@ -375,14 +375,13 @@
     }
   ];
 
-  // Identify current article
+  // Identify current article. Pages written in the dashboard use /article?id=...
   const currentPath = window.location.pathname;
-  const currentArticle = allArticles.find(a => currentPath.includes(a.id)) || allArticles[0];
-
-  // Generate random math challenge (Anti-Spam Security)
-  let num1 = Math.floor(Math.random() * 8) + 2;
-  let num2 = Math.floor(Math.random() * 8) + 2;
-  let correctAnswer = num1 + num2;
+  const dashboardArticleId = /\/article(\.html)?$/.test(currentPath) ? new URLSearchParams(window.location.search).get("id") : "";
+  const currentArticle = dashboardArticleId
+    ? { id: dashboardArticleId, title: "" }
+    : (allArticles.find(a => currentPath.includes(a.id)) || allArticles[0]);
+  const articleTitle = () => currentArticle.title || (document.querySelector("#articleTitle, .page-hero h1")?.textContent || "").trim();
 
   // Initialize DOM Restructuring
   document.addEventListener("DOMContentLoaded", function() {
@@ -405,16 +404,12 @@
     gridContainer.appendChild(sidebar);
 
     // 3. Move article contents into mainContent
-    // Preserve back-link at the very end
-    const backLink = articleBody.querySelector(".back-link");
     mainContent.appendChild(articleBody);
 
     // 4. Build Sidebar (excerpts to read other blogs)
     let sidebarHtml = `<h3>Read Other Stories</h3>`;
     const otherArticles = allArticles.filter(a => a.id !== currentArticle.id);
-    // Shuffle and pick 3 articles
     const shuffled = otherArticles.sort(() => 0.5 - Math.random()).slice(0, 3);
-    
     shuffled.forEach(post => {
       sidebarHtml += `
         <a href="${post.id}.html" class="sidebar-post-card">
@@ -437,55 +432,53 @@
     commentsDiv.className = "comments-container";
     articleBody.appendChild(commentsDiv);
 
-    // Render comments list and drop comment form
-    renderComments();
+    renderComments([]);
+    loadComments();
   });
 
-  // Render comments list & form helper
-  function renderComments() {
+  // Approved comments come from the server; new ones wait for approval in the dashboard.
+  async function loadComments() {
+    try {
+      const res = await fetch(`/api/content?type=comments&article=${encodeURIComponent(currentArticle.id)}`);
+      const comments = res.ok ? await res.json() : [];
+      renderComments(Array.isArray(comments) ? comments : []);
+    } catch (e) {
+      renderComments([]);
+    }
+  }
+
+  function renderComments(comments, note) {
     const commentsContainer = document.getElementById("comments-section");
     if (!commentsContainer) return;
-
-    const storageKey = `oban-comments-${currentArticle.id}`;
-    const comments = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
     let commentsListHtml = "";
     if (comments.length === 0) {
       commentsListHtml = `<p style="color:#8c867c; font-style:italic; font-size:13px; margin-bottom: 30px;">No comments yet. Be the first to share your thoughts.</p>`;
     } else {
       comments.forEach(comment => {
-        let repliesHtml = "";
-        if (comment.replies && comment.replies.length > 0) {
-          comment.replies.forEach(reply => {
-            repliesHtml += `
-              <div class="admin-reply-card">
-                <div class="comment-header">
-                  <span class="comment-author">${reply.name} <span class="admin-badge">Author</span></span>
-                  <span class="comment-date">${reply.date}</span>
-                </div>
-                <p class="comment-body">${reply.text}</p>
-              </div>
-            `;
-          });
-        }
+        const repliesHtml = (comment.replies || []).map(reply => `
+          <div class="admin-reply-card">
+            <div class="comment-header">
+              <span class="comment-author">${escapeHTML(reply.name || "Oban Wears")} <span class="admin-badge">Oban Wears</span></span>
+              <span class="comment-date">${escapeHTML(reply.date || "")}</span>
+            </div>
+            <p class="comment-body">${escapeHTML(reply.text || "")}</p>
+          </div>
+        `).join("");
 
         commentsListHtml += `
-          <div class="comment-card" data-id="${comment.id}">
+          <div class="comment-card">
             <div class="comment-header">
-              <span class="comment-author">${escapeHTML(comment.name)}</span>
-              <span class="comment-date">${comment.date}</span>
+              <span class="comment-author">${escapeHTML(comment.name || "")}</span>
+              <span class="comment-date">${escapeHTML(comment.date || "")}</span>
             </div>
-            <p class="comment-body">${escapeHTML(comment.text)}</p>
-            <div class="comment-actions">
-              <button class="comment-reply-btn" onclick="replyComment('${comment.id}')">Reply as Admin</button>
-            </div>
+            <p class="comment-body">${escapeHTML(comment.text || "")}</p>
             ${repliesHtml}
           </div>
         `;
       });
     }
 
-    // Drop Comment Form Markup (with multi-layered spam security)
     commentsContainer.innerHTML = `
       <h3>Thoughts & Comments (${comments.length})</h3>
       <div class="comment-list">
@@ -494,149 +487,74 @@
 
       <div style="margin-top: 40px;">
         <h3 style="margin-bottom:20px;">Leave a Comment</h3>
-        <form id="commentForm" class="comment-form" onsubmit="submitComment(event)">
-          <!-- Honeypot Bot Trap Field (Display hidden from users, filled by bots) -->
+        ${note ? `<p class="comment-note" style="background:#eee5d5;border-left:3px solid #d3ab69;padding:12px 14px;font-size:13px;margin:0 0 18px;">${escapeHTML(note)}</p>` : ""}
+        <form id="commentForm" class="comment-form" novalidate>
           <div class="honeypot-field">
             <label for="comment_website_field">Leave this empty</label>
             <input type="text" id="comment_website_field" name="website" tabindex="-1" autocomplete="off">
           </div>
-
           <div>
             <label for="commentName">Name</label>
-            <input type="text" id="commentName" placeholder="Your name" required>
+            <input type="text" id="commentName" placeholder="Your name" maxlength="80" required>
           </div>
           <div>
-            <label for="commentEmail">Email</label>
-            <input type="email" id="commentEmail" placeholder="Your email address" required>
+            <label for="commentEmail">Email (not shown)</label>
+            <input type="email" id="commentEmail" placeholder="Your email address" maxlength="120" required>
           </div>
           <div class="full-width">
             <label for="commentText">Comment</label>
-            <textarea id="commentText" placeholder="Write your thoughts..." required></textarea>
+            <textarea id="commentText" placeholder="Write your thoughts..." maxlength="2000" required></textarea>
           </div>
-          
-          <!-- Mathematical Challenge-Response Security -->
-          <div class="captcha-row">
-            <div class="captcha-question">Security Check: What is ${num1} + ${num2}?</div>
-            <input type="number" id="captchaAnswer" class="captcha-input" placeholder="Answer" required>
-          </div>
-
           <div class="full-width">
             <button type="submit" class="comment-submit-btn">Post Comment</button>
           </div>
         </form>
       </div>
     `;
+    const form = document.getElementById("commentForm");
+    if (form) form.addEventListener("submit", (e) => submitComment(e, comments));
   }
 
-  // Handle Comment Submission (Anti-Spam Security filters)
-  window.submitComment = function(event) {
+  async function submitComment(event, comments) {
     event.preventDefault();
-
-    // 1. Honeypot check: If filled, block as spam bot silently
-    const hpValue = document.getElementById("comment_website_field").value;
-    if (hpValue) {
-      console.warn("Spam bot detected via honeypot trap.");
-      alert("Comment submitted successfully!"); // Fake success response to confuse bot
-      document.getElementById("commentForm").reset();
-      return;
-    }
-
-    // 2. Math Captcha validation
-    const userAnswer = parseInt(document.getElementById("captchaAnswer").value);
-    if (userAnswer !== correctAnswer) {
-      alert("Verification failed. Please solve the math check correctly.");
-      return;
-    }
-
-    // 3. Rate limiting check (min 15 seconds spacing)
-    const lastSubKey = "oban-last-comment-time";
-    const lastTime = parseInt(localStorage.getItem(lastSubKey) || "0");
-    const now = Date.now();
-    if (now - lastTime < 15000) {
-      alert("Please wait a few seconds before posting another comment.");
-      return;
-    }
-
-    // 4. Keyword spam filter & URL checks
+    const form = event.currentTarget;
+    const button = form.querySelector("button[type=submit]");
     const name = document.getElementById("commentName").value.trim();
     const email = document.getElementById("commentEmail").value.trim();
     const text = document.getElementById("commentText").value.trim();
-
-    const spamKeywords = ["crypto", "bitcoin", "solana", "forex", "viagra", "levitra", "casino", "poker", "free cash", "earn money"];
-    const lowercaseText = text.toLowerCase();
-    const hasSpamWord = spamKeywords.some(keyword => lowercaseText.includes(keyword));
-    
-    // Count link patterns: bots inject lots of URLs
-    const urlPattern = /https?:\/\/[^\s]+/g;
-    const urlCount = (text.match(urlPattern) || []).length;
-
-    if (hasSpamWord || urlCount > 1) {
-      alert("Your comment has been blocked because it triggered our spam security system.");
+    if (!name || !email || !text) {
+      alert("Please enter your name, email and comment.");
       return;
     }
-
-    // Safe to save!
-    const storageKey = `oban-comments-${currentArticle.id}`;
-    const comments = JSON.parse(localStorage.getItem(storageKey) || "[]");
-
-    const newComment = {
-      id: "c-" + Date.now(),
-      name: name,
-      email: email,
-      text: text,
-      date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-      replies: []
-    };
-
-    comments.push(newComment);
-    localStorage.setItem(storageKey, JSON.stringify(comments));
-    localStorage.setItem(lastSubKey, now.toString());
-
-    // Regenerate captcha variables for next use
-    num1 = Math.floor(Math.random() * 8) + 2;
-    num2 = Math.floor(Math.random() * 8) + 2;
-    correctAnswer = num1 + num2;
-
-    renderComments();
-    alert("Comment posted successfully!");
-  };
-
-  // Reply as Admin/Author helper
-  window.replyComment = function(commentId) {
-    // Requires enter of standard PIN or password (ObanAdmin2026 / manager PIN)
-    const pin = prompt("Enter Admin Password/PIN to reply as Oban Wears:");
-    if (!pin) return;
-
-    if (pin !== "ObanAdmin2026" && pin !== "ObanManager2026!") {
-      alert("Unauthorized access. Invalid Admin PIN.");
-      return;
-    }
-
-    const replyText = prompt("Type your reply to this comment:");
-    if (!replyText || !replyText.trim()) return;
-
-    const storageKey = `oban-comments-${currentArticle.id}`;
-    const comments = JSON.parse(localStorage.getItem(storageKey) || "[]");
-
-    const comment = comments.find(c => c.id === commentId);
-    if (comment) {
-      if (!comment.replies) comment.replies = [];
-      comment.replies.push({
-        name: "Oban Wears",
-        text: replyText.trim(),
-        date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
-        isAdmin: true
+    button.disabled = true;
+    button.textContent = "Sending…";
+    try {
+      const res = await fetch("/api/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "comment",
+          articleId: currentArticle.id,
+          articleTitle: articleTitle(),
+          name,
+          email,
+          text,
+          website: document.getElementById("comment_website_field").value
+        })
       });
-
-      localStorage.setItem(storageKey, JSON.stringify(comments));
-      renderComments();
-      alert("Admin reply posted successfully!");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Your comment could not be sent. Please try again.");
+      renderComments(comments, "Thank you! Your comment has been received and will appear here once the Oban Wears team approves it.");
+    } catch (err) {
+      alert(err.message);
+      button.disabled = false;
+      button.textContent = "Post Comment";
     }
-  };
+  }
 
   // HTML escaping function to prevent XSS
   function escapeHTML(str) {
-    return str
+    return String(str)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
