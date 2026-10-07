@@ -5,13 +5,15 @@
 //        changed after the cursor from the previous response.
 //   GET  ?c=staff                                    { staff: {...} }          (admin)
 //   POST {c, upsert: {key: record}, remove: [key]}   per-record writes, never whole-list overwrites
-//   POST {c: "staff", action, email, role}           invite / revokeInvite / removeStaff / setRole (admin)
+//   POST {c: "staff", action, email, role}           invite / resendInvite / revokeInvite / removeStaff / setRole (admin)
+//                                                    invite and resendInvite email the staff member
 //   POST {c: "recover", records: {orders: {...}}}    adds records the server has never had
 //   POST {c: "image", data: "data:image/...;base64,..."}  stores an uploaded image, returns {url}
 const db = require("./_lib/db");
 const store = require("./_lib/store");
 const auth = require("./_lib/auth");
 const legacy = require("./_lib/legacy");
+const mail = require("./_lib/mail");
 const { handler, send, query, readBody, str, isEmail, HttpError } = require("./_lib/http");
 
 const ALL = auth.ROLES;
@@ -68,6 +70,11 @@ async function staffAction(body, user) {
   if (body.action === "invite") {
     if (auth.envAdmins().includes(email) || await db.get("staff", email)) throw new HttpError(409, "This email already has an account");
     await db.put("staffInvites", email, { email, role, invitedBy: user.email, createdAt: new Date().toISOString() });
+    return { emailed: await mail.sendStaffInvite({ to: email, role, invitedBy: user.email }) };
+  } else if (body.action === "resendInvite") {
+    const invite = await db.get("staffInvites", email);
+    if (!invite) throw new HttpError(404, "There is no pending invitation for this email");
+    return { emailed: await mail.sendStaffInvite({ to: email, role: invite.role, invitedBy: user.email }) };
   } else if (body.action === "revokeInvite") {
     await db.remove("staffInvites", email);
   } else if (body.action === "removeStaff") {
@@ -148,8 +155,8 @@ module.exports = handler({
 
     if (collection === "staff") {
       if (user.role !== "admin") throw new HttpError(403, "Only admins can manage staff");
-      await staffAction(body, user);
-      return send(res, 200, { ok: true, staff: await readStaff() });
+      const result = (await staffAction(body, user)) || {};
+      return send(res, 200, { ok: true, ...result, staff: await readStaff() });
     }
     if (collection === "recover") {
       // Insert-only and limited to collections the role can already edit.

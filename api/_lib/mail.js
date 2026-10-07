@@ -123,4 +123,37 @@ async function sendEnquiryNotice(enquiry) {
   }
 }
 
-module.exports = { sendLoginCode, sendTest, sendEnquiryNotice, configured, outbox };
+// Staff invitation: tells the new team member how to set up their account.
+// Returns false (instead of throwing) so the invite itself is still saved.
+async function sendStaffInvite({ to, role, invitedBy }) {
+  const site = (process.env.SITE_URL || "https://obanwears.com").replace(/\/+$/, "");
+  const roleText = { admin: "Admin (full control)", manager: "Manager", editor: "Editor" }[role] || role;
+  try {
+    await send({
+      to,
+      replyTo: invitedBy,
+      subject: "You have been invited to the Oban Wears dashboard",
+      text: [
+        "Hello,",
+        "",
+        `${invitedBy} has added you to the Oban Wears dashboard as ${roleText}.`,
+        "",
+        "To set up your account:",
+        `1. Open ${site}/admin`,
+        '2. Choose "Set up your account"',
+        `3. Enter your name, this email address (${to}) and a password of at least 8 characters`,
+        "4. Enter the 6-digit code we email you",
+        "",
+        "If you were not expecting this, you can ignore this email.",
+        "",
+        "Oban Wears"
+      ].join("\n")
+    });
+    return true;
+  } catch (err) {
+    console.error("Staff invite email failed:", err);
+    return false;
+  }
+}
+
+module.exports = { sendLoginCode, sendTest, sendEnquiryNotice, sendStaffInvite, configured, outbox };

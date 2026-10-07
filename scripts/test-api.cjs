@@ -173,6 +173,10 @@ server.listen(0, async () => {
     check("invite needs admin token", (await call("/api/admin", { method: "POST", body: { c: "staff", action: "invite", email: "tailor@oban.test", role: "editor" } })).status === 401);
     const invite = await call("/api/admin", { method: "POST", token: admin, body: { c: "staff", action: "invite", email: "tailor@oban.test", role: "editor" } });
     check("admin invites staff", invite.status === 200 && invite.body.staff["tailor@oban.test"].status === "invited", invite.body);
+    const inviteMail = mail.outbox[mail.outbox.length - 1];
+    check("invitation emailed to the staff member", invite.body.emailed === true && inviteMail.to === "tailor@oban.test" && /invited/i.test(inviteMail.subject) && inviteMail.text.includes("Set up your account"), inviteMail);
+    const resent = await call("/api/admin", { method: "POST", token: admin, body: { c: "staff", action: "resendInvite", email: "tailor@oban.test" } });
+    check("invitation can be resent", resent.status === 200 && resent.body.emailed === true && mail.outbox[mail.outbox.length - 1].to === "tailor@oban.test", resent.body);
     check("uninvited email cannot register", (await call("/api/auth", { method: "POST", body: { action: "register", name: "X", email: "x@oban.test", password: "longpassword" } })).status === 403);
     const reg = await call("/api/auth", { method: "POST", body: { action: "register", name: "Tailor", email: "tailor@oban.test", password: "tailor-password" } });
     check("invited staff registers and gets a code", reg.status === 200 && reg.body.otpRequired, reg.body);

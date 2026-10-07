@@ -906,7 +906,7 @@
     body.innerHTML = rows.length ? rows.map((s) => {
       const editable = s.status !== "owner" && s.email !== me;
       let action = '<span class="muted">Set in hosting</span>';
-      if (s.status === "invited") action = `<button type="button" class="act act-text staff-action-btn" data-action="revokeInvite" data-email="${escapeHtml(s.email)}">${icon("close")}Cancel invite</button>`;
+      if (s.status === "invited") action = `<div class="acts"><button type="button" class="act act-text staff-action-btn" data-action="resendInvite" data-email="${escapeHtml(s.email)}">${icon("mail")}Resend</button><button type="button" class="act act-text staff-action-btn" data-action="revokeInvite" data-email="${escapeHtml(s.email)}">${icon("close")}Cancel</button></div>`;
       else if (s.status === "active" && s.email !== me) action = `<button type="button" class="act act-text act-danger staff-action-btn" data-action="removeStaff" data-email="${escapeHtml(s.email)}">${icon("trash")}Revoke access</button>`;
       else if (s.email === me) action = '<span class="muted">You</span>';
       const initial = escapeHtml(String(s.name || s.email || "?").trim().charAt(0).toUpperCase());
@@ -921,10 +921,17 @@
 
     body.querySelectorAll(".staff-action-btn").forEach((btn) => {
       btn.onclick = async () => {
-        const question = btn.dataset.action === "removeStaff" ? `Revoke dashboard access for ${btn.dataset.email}?` : `Cancel the invitation for ${btn.dataset.email}?`;
-        if (!confirm(question)) return;
+        const action = btn.dataset.action;
+        if (action !== "resendInvite") {
+          const question = action === "removeStaff" ? `Revoke dashboard access for ${btn.dataset.email}?` : `Cancel the invitation for ${btn.dataset.email}?`;
+          if (!confirm(question)) return;
+        }
+        btn.disabled = true;
         try {
-          await api("POST", "/api/admin", { c: "staff", action: btn.dataset.action, email: btn.dataset.email });
+          const r = await api("POST", "/api/admin", { c: "staff", action, email: btn.dataset.email });
+          if (action === "resendInvite") {
+            alert(r.emailed ? `Invitation sent again to ${btn.dataset.email}.` : `The invitation email could not be sent. Please check that ${btn.dataset.email} is correct, or try again shortly.`);
+          }
           window.renderStaff();
         } catch (err) {
           alert(err.message);
@@ -952,10 +959,12 @@
         const email = document.querySelector("#inviteEmail").value.trim().toLowerCase();
         const r = document.querySelector("#inviteRole").value;
         try {
-          await api("POST", "/api/admin", { c: "staff", action: "invite", email, role: r });
+          const result = await api("POST", "/api/admin", { c: "staff", action: "invite", email, role: r });
           invite.reset();
           window.renderStaff();
-          alert(`${email} can now open the dashboard, choose "Set up your account" and pick a password. A sign-in code will be sent to that email.`);
+          alert(result.emailed
+            ? `Invitation emailed to ${email}. They open the link, choose "Set up your account" and pick a password.`
+            : `${email} was added, but the invitation email could not be sent. Use Resend on their row, or tell them to open obanwears.com/admin and choose "Set up your account".`);
         } catch (err) {
           alert(err.message);
         }
