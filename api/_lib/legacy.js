@@ -13,6 +13,10 @@ const SOURCES = {
   blog: ["articles", (a) => a && (a.id || a.filename)]
 };
 
+// Renamed when going live so orders saved to Firebase after the preview
+// import are picked up too (insert-only, so earlier imports are untouched).
+const IMPORT_MARKER = "legacyImport-live";
+
 let running = null;
 
 async function fetchPath(path) {
@@ -23,7 +27,7 @@ async function fetchPath(path) {
 }
 
 async function run() {
-  if (!LEGACY_URL || await db.get("meta", "legacyImport")) return null;
+  if (!LEGACY_URL || await db.get("meta", IMPORT_MARKER)) return null;
   const summary = {};
   for (const [path, [collection, keyOf]] of Object.entries(SOURCES)) {
     const list = await fetchPath(path);
@@ -41,7 +45,7 @@ async function run() {
     if (images.length) await db.apply("_images", {}, [], images);
     summary[collection] = (await db.insertMissing(collection, records)).length;
   }
-  await db.put("meta", "legacyImport", { at: new Date().toISOString(), source: LEGACY_URL, summary });
+  await db.put("meta", IMPORT_MARKER, { at: new Date().toISOString(), source: LEGACY_URL, summary });
   console.log("Imported legacy Firebase data:", summary);
   return summary;
 }
