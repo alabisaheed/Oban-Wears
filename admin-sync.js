@@ -252,15 +252,17 @@
       if (!host) return;
       el = document.createElement("span");
       el.id = "syncStatus";
-      el.style.cssText = "font-size:11px;font-weight:600;letter-spacing:0.04em;";
+      el.setAttribute("role", "status");
       host.prepend(el);
     }
     el.textContent = text;
-    el.style.color = isError ? "#b03a2e" : "#8c867c";
+    el.title = text;
+    el.classList.toggle("is-error", isError);
+    el.classList.toggle("is-busy", !isError && /saving|loading/i.test(text));
 
     const dot = document.querySelector("#firebaseStatusDot");
     const label = document.querySelector("#firebaseStatusText");
-    if (dot) dot.style.background = isError ? "#b03a2e" : "#27ae60";
+    if (dot) dot.style.background = isError ? "#4a3324" : "#5a6048";
     if (label) label.textContent = isError ? "Not connected" : "Connected to Oban Wears server";
     const pulled = document.querySelector("#syncLastPulled");
     if (pulled && lastPullAt) pulled.textContent = `Last checked for changes: ${new Date(lastPullAt).toLocaleTimeString()}`;
@@ -329,10 +331,17 @@
       }
 
       try {
-        const result = await api("POST", "/api/admin", { c: spec.collection, upsert, remove });
+        const upsertKeys = Object.keys(upsert);
+        const BATCH = 200;
         const next = new Map(serverState[lsKey] || known);
-        Object.entries(result.saved || {}).forEach(([key, record]) => next.set(key, canonicalJson(record)));
-        remove.forEach((key) => next.delete(key));
+        for (let i = 0; i < Math.max(upsertKeys.length, remove.length); i += BATCH) {
+          const part = Object.fromEntries(upsertKeys.slice(i, i + BATCH).map((k) => [k, upsert[k]]));
+          const removePart = remove.slice(i, i + BATCH);
+          const result = await api("POST", "/api/admin", { c: spec.collection, upsert: part, remove: removePart });
+          Object.entries(result.saved || {}).forEach(([key, record]) => next.set(key, canonicalJson(record)));
+          removePart.forEach((key) => next.delete(key));
+          serverState[lsKey] = new Map(next);
+        }
         serverState[lsKey] = next;
       } catch (err) {
         console.warn(`Could not save ${spec.collection}:`, err);
@@ -576,7 +585,7 @@
 
     document.body.classList.toggle("obl-signed-out", !signedIn);
     if (auth) auth.style.display = signedIn ? "none" : "";
-    if (dash) dash.style.display = signedIn ? "block" : "none";
+    if (dash) dash.style.display = signedIn ? "" : "none";
 
     if (signedIn) {
       applyRoleUI();
@@ -584,6 +593,7 @@
     } else {
       showStep("credentials");
     }
+    document.dispatchEvent(new CustomEvent("oban:session", { detail: { signedIn } }));
   }
   window.checkSession = checkSession;
 
@@ -877,31 +887,33 @@
     try {
       staff = (await api("GET", "/api/admin?c=staff")).staff || {};
     } catch (err) {
-      body.innerHTML = `<tr><td colspan="4" style="padding:20px;color:#b03a2e;">Could not load staff: ${escapeHtml(err.message)}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="4" class="empty">Could not load staff: ${escapeHtml(err.message)}</td></tr>`;
       return;
     }
     const me = currentUser().email;
     const rows = Object.values(staff).sort((a, b) => String(a.email).localeCompare(String(b.email)));
+    const icon = (n) => `<svg class="ic"><use href="#i-${n}"/></svg>`;
     const roleSelect = (s) => `
-      <select class="staff-role-select" data-email="${escapeHtml(s.email)}" style="font-size:11px;padding:4px 8px;border:1px solid var(--line);background:transparent;color:var(--ink);cursor:pointer;outline:none;">
+      <select class="sel-sm staff-role-select" data-email="${escapeHtml(s.email)}" aria-label="Role for ${escapeHtml(s.email)}" style="min-width:120px">
         ${["admin", "manager", "editor"].map((r) => `<option value="${r}" ${s.role === r ? "selected" : ""}>${r[0].toUpperCase() + r.slice(1)}</option>`).join("")}
       </select>`;
-    const statusColor = { owner: "#a8823f", active: "#27ae60", invited: "#f39c12" };
-    const statusText = { owner: "Owner", active: "Active", invited: "Invited: not set up yet" };
+    const statusClass = { owner: "badge-gold", active: "badge-ok", invited: "st-1" };
+    const statusText = { owner: "Owner", active: "Active", invited: "Invited" };
     body.innerHTML = rows.length ? rows.map((s) => {
       const editable = s.status !== "owner" && s.email !== me;
-      let action = '<span style="font-size:10px;color:#8c867c;font-style:italic;">Owner (set in hosting)</span>';
-      if (s.status === "invited") action = `<button class="staff-action-btn" data-action="revokeInvite" data-email="${escapeHtml(s.email)}" style="background:transparent;border:1px solid var(--line);color:var(--ink);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Cancel invite</button>`;
-      else if (s.status === "active" && s.email !== me) action = `<button class="staff-action-btn" data-action="removeStaff" data-email="${escapeHtml(s.email)}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Revoke access</button>`;
-      else if (s.email === me) action = '<span style="font-size:10px;color:#8c867c;font-style:italic;">You</span>';
+      let action = '<span class="muted">Set in hosting</span>';
+      if (s.status === "invited") action = `<button type="button" class="act act-text staff-action-btn" data-action="revokeInvite" data-email="${escapeHtml(s.email)}">${icon("close")}Cancel invite</button>`;
+      else if (s.status === "active" && s.email !== me) action = `<button type="button" class="act act-text act-danger staff-action-btn" data-action="removeStaff" data-email="${escapeHtml(s.email)}">${icon("trash")}Revoke access</button>`;
+      else if (s.email === me) action = '<span class="muted">You</span>';
+      const initial = escapeHtml(String(s.name || s.email || "?").trim().charAt(0).toUpperCase());
       return `
-        <tr style="border-bottom:1px solid var(--line);">
-          <td style="padding:14px 12px;"><strong>${escapeHtml(s.email)}</strong>${s.name ? `<div style="font-size:11px;color:#8c867c;">${escapeHtml(s.name)}</div>` : ""}</td>
-          <td style="padding:14px 12px;">${editable ? roleSelect(s) : `<span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;text-transform:capitalize;">${escapeHtml(s.role)}</span>`}</td>
-          <td style="padding:14px 12px;"><span style="font-size:11px;color:${statusColor[s.status] || "#8c867c"};font-weight:bold;text-transform:uppercase;">${escapeHtml(statusText[s.status] || s.status)}</span></td>
-          <td style="padding:14px 12px;">${action}</td>
+        <tr>
+          <td><div class="art-cell"><span class="adm-avatar">${initial}</span><div><span class="cell-main">${escapeHtml(s.name || s.email)}</span><span class="cell-sub">${escapeHtml(s.email)}</span></div></div></td>
+          <td>${editable ? roleSelect(s) : `<span class="badge badge-plain" style="text-transform:capitalize">${escapeHtml(s.role)}</span>`}</td>
+          <td><span class="badge ${statusClass[s.status] || ""}">${escapeHtml(statusText[s.status] || s.status)}</span>${s.status === "invited" ? '<span class="cell-sub">Waiting for them to set up</span>' : ""}</td>
+          <td>${action}</td>
         </tr>`;
-    }).join("") : `<tr><td colspan="4" style="text-align:center;color:#8c867c;padding:20px;">No staff yet.</td></tr>`;
+    }).join("") : `<tr><td colspan="4" class="empty">No staff yet.</td></tr>`;
 
     body.querySelectorAll(".staff-action-btn").forEach((btn) => {
       btn.onclick = async () => {
@@ -954,10 +966,10 @@
         try {
           await authPost({ action: "changePassword", current: document.querySelector("#currentPasswordInput").value, password: document.querySelector("#newPasswordInput").value });
           change.reset();
-          msg.style.color = "#27ae60";
+          msg.style.color = "#5a6048";
           msg.textContent = "Password updated.";
         } catch (err) {
-          msg.style.color = "#b03a2e";
+          msg.style.color = "#4a3324";
           msg.textContent = err.message;
         }
       });

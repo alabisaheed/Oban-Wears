@@ -1138,87 +1138,23 @@ const formatNaira = (n) => {
   }).format(n);
 };
 
-// Date range validator helper
+// Date range filter, counted back from today.
 function isDateInRange(dateStr, period) {
+  if (!period || period === "all") return true;
   const orderDate = new Date(Date.parse(dateStr));
-  const today = new Date(2026, 5, 21); // Mock today as June 21 2026
-  
-  const diffTime = today - orderDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (period === "all") return true;
-  if (period === "today") return diffDays === 0;
-  if (period === "month") {
-    return orderDate.getMonth() === today.getMonth() && orderDate.getFullYear() === today.getFullYear();
-  }
-  if (period === "2months") {
-    const limit = new Date(2026, 4, 1); // May 1 2026
-    return orderDate >= limit && orderDate <= today;
-  }
-  if (period === "6months") {
-    const limit = new Date(2026, 0, 1); // Jan 1 2026
-    return orderDate >= limit && orderDate <= today;
-  }
-  if (period === "year") {
-    const limit = new Date(2025, 5, 21); // June 21 2025
-    return orderDate >= limit && orderDate <= today;
-  }
-  return true;
+  if (Number.isNaN(orderDate.getTime())) return false;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === "today") return orderDate >= startOfToday;
+  if (period === "month") return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+  const monthsBack = { "2months": 2, "6months": 6, year: 12 }[period];
+  if (!monthsBack) return true;
+  const limit = new Date(startOfToday);
+  limit.setMonth(limit.getMonth() - monthsBack);
+  return orderDate >= limit;
 }
 
-// Tab Switching
-document.querySelectorAll(".admin-tab").forEach(tabBtn => {
-  tabBtn.onclick = () => {
-    document.querySelectorAll(".admin-tab").forEach(b => {
-      b.classList.remove("active");
-      b.style.color = "#8c867c";
-      b.style.borderBottom = "none";
-    });
-    tabBtn.classList.add("active");
-    tabBtn.style.color = "var(--gold)";
-    tabBtn.style.borderBottom = "2px solid var(--gold)";
-
-    const targetTab = tabBtn.dataset.tab;
-    const tabPanels = ["orders", "customers", "inventory", "blog", "staff", "purchases", "subscribers", "database"];
-    tabPanels.forEach(panel => {
-      const el = document.getElementById("tab" + panel.charAt(0).toUpperCase() + panel.slice(1));
-      if (el) el.style.display = panel === targetTab ? "block" : "none";
-    });
-
-    if (targetTab === "customers") renderCustomers();
-    if (targetTab === "inventory") renderInventory();
-    if (targetTab === "blog") renderBlogFeed();
-    if (targetTab === "staff") renderStaff();
-    if (targetTab === "purchases") renderPurchases();
-    if (targetTab === "subscribers") renderSubscribers();
-    if (targetTab === "database") updateFirebaseUI();
-  };
-});
-
-// Purchases Subtab Switching
-document.querySelectorAll(".purchases-nav-item").forEach(subtabBtn => {
-  subtabBtn.onclick = () => {
-    document.querySelectorAll(".purchases-nav-item").forEach(b => {
-      b.classList.remove("active");
-      b.style.color = "#8c867c";
-    });
-    subtabBtn.classList.add("active");
-    subtabBtn.style.color = "var(--gold)";
-
-    const targetSubtab = subtabBtn.dataset.subtab;
-    const subtabs = ["vendors", "po", "receives", "bills", "payments"];
-    subtabs.forEach(sub => {
-      const el = document.getElementById("subtab" + sub.toUpperCase());
-      if (el) el.style.display = sub === targetSubtab ? "block" : "none";
-    });
-
-    if (targetSubtab === "vendors") renderVendors();
-    if (targetSubtab === "po") renderPurchaseOrdersList();
-    if (targetSubtab === "receives") renderPurchaseReceivesList();
-    if (targetSubtab === "bills") renderBillsList();
-    if (targetSubtab === "payments") renderPaymentsList();
-  };
-});
+// Section switching lives in admin-ui.js (sidebar, titles, purchases pills).
 
 // Dashboard rendering
 // New reference in the usual OB1234K shape that no loaded order already uses.
@@ -1232,199 +1168,159 @@ function newOrderRef(existing) {
   return ref;
 }
 
+const ICON = (name) => `<svg class="ic"><use href="#i-${name}"/></svg>`;
+
+function measurementLine(m, saved) {
+  if (!m || !m.neck) return "";
+  const parts = [["N", m.neck], ["C", m.chest], ["Sh", m.shoulder], ["Sl", m.sleeve], ["W", m.waist], ["L", m.length]]
+    .filter(([, v]) => v !== undefined && v !== "")
+    .map(([k, v]) => `${k} ${escapeHtml(v)}"`).join(" · ");
+  return `<span class="specs">${ICON("ruler")}${saved ? "Saved: " : ""}${parts}</span>`;
+}
+
 function renderDashboard() {
   const allOrders = JSON.parse(localStorage.getItem("oban-orders")) || [];
   const periodSelect = document.querySelector("#dateFilter");
   const period = periodSelect ? periodSelect.value : "all";
-  
-  let filtered = allOrders.filter((order) => isDateInRange(order.date, period));
-  
-  // Search filter
+
+  // Metrics follow the period only; the table also follows search and status.
+  const inPeriod = allOrders.filter((order) => isDateInRange(order.createdAt || order.date, period));
+  let filtered = inPeriod;
+
   const q = orderSearchInput ? orderSearchInput.value.trim().toLowerCase() : "";
   if (q) {
     filtered = filtered.filter(o =>
       String(o.ref || "").toLowerCase().includes(q) ||
       String(o.name || "").toLowerCase().includes(q) ||
+      String(o.email || "").toLowerCase().includes(q) ||
       String(o.piece || "").toLowerCase().includes(q)
     );
   }
+  const stageFilter = document.querySelector("#orderStageFilter");
+  const stageWanted = stageFilter ? Number(stageFilter.value) : 0;
+  if (stageWanted) filtered = filtered.filter(o => Number(o.currentStage) === stageWanted);
 
   db = filtered;
-  
-  // Calculate metrics
+
   let totalRevenue = 0;
   let activeCount = 0;
   let dispatchedCount = 0;
-  
-  db.forEach((order) => {
-    if (order.currentStage !== 9) { // Exclude Cancelled from total sales
-      totalRevenue += Number(order.total) || 0;
-    }
-    if (order.currentStage === 8) {
-      dispatchedCount++;
-    } else if (order.currentStage !== 9) { // Exclude Cancelled from active count
-      activeCount++;
-    }
+  inPeriod.forEach((order) => {
+    const stage = Number(order.currentStage);
+    if (stage !== 9) totalRevenue += Number(order.total) || 0;
+    if (stage === 8) dispatchedCount++;
+    else if (stage !== 9 && stage !== 1) activeCount++;
   });
-  
+
   if (metricSales) metricSales.textContent = formatNaira(totalRevenue);
-  if (metricOrders) metricOrders.textContent = db.length;
+  if (metricOrders) metricOrders.textContent = inPeriod.length;
   if (metricActive) metricActive.textContent = activeCount;
   if (metricDispatched) metricDispatched.textContent = dispatchedCount;
-  
-  // Render table rows
-  if (ordersTableBody) {
-    const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-    ordersTableBody.innerHTML = db.map((order) => {
-      const stageText = stageLabels[order.currentStage];
-      const badgeClass = badgeClasses[order.currentStage];
-      
-      let dropdownOptions = "";
-      for (let s = 1; s <= 9; s++) { // Up to 9 (Cancelled)
-        const isSelected = order.currentStage === s ? "selected" : "";
-        dropdownOptions += `<option value="${s}" ${isSelected}>${stageLabels[s]}</option>`;
-      }
-      
-      const originalIndex = allOrders.findIndex(x => x.ref === order.ref);
-      
-      let specs = "";
-      if (order.measurements && order.measurements.neck) {
-        specs = `<div style="font-size:10px;color:var(--gold);margin-top:4px;font-family:monospace;">Specs: N:${order.measurements.neck}" C:${order.measurements.chest}" Sh:${order.measurements.shoulder}" Sl:${order.measurements.sleeve}" W:${order.measurements.waist}" L:${order.measurements.length}"</div>`;
-      } else if (order.email) {
-        const clientProfile = profiles[order.email.trim().toLowerCase()];
-        if (clientProfile && clientProfile.measurements && clientProfile.measurements.neck) {
-          const m = clientProfile.measurements;
-          specs = `<div style="font-size:10px;color:var(--gold);margin-top:4px;font-family:monospace;">Specs (Saved): N:${m.neck}" C:${m.chest}" Sh:${m.shoulder}" Sl:${m.sleeve}" W:${m.waist}" L:${m.length}"</div>`;
-        }
-      }
-      
-      const pct = typeof order.paymentPercentage === "number" ? order.paymentPercentage : 100;
-      const isFull = pct === 100;
-      const paymentStatusText = isFull ? "Paid in Full" : `Installment (${pct}%)`;
-      const paymentStatusColor = isFull ? "#27ae60" : "#d35400";
-      
-      let pctOptions = "";
-      [100, 90, 80, 70, 60, 50].forEach(p => {
-        const isSelected = pct === p ? "selected" : "";
-        const label = p === 100 ? "100% (Full)" : `${p}% (Partial)`;
-        pctOptions += `<option value="${p}" ${isSelected}>${label}</option>`;
-      });
 
-      // Strip "Size M" completely from display details
-      const cleanPiece = String(order.piece || "")
-        .replace(/\(?Size\s+[a-zA-Z0-9]+,?\s*\)?/gi, "")
-        .replace(/\(\s*,\s*/g, "(")
-        .replace(/\s*,\s*\)/g, ")")
-        .replace(/\(\s*\)/g, "")
-        .trim();
+  if (!ordersTableBody) return;
+  const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
+  const canDelete = ["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "");
 
-      const fabricBadge = order.fabricSource === "client" ? `<span style="font-size:9px;background:#b03a2e;color:white;padding:2px 6px;border-radius:2px;font-weight:bold;margin-left:6px;display:inline-block;vertical-align:middle;text-transform:uppercase;letter-spacing:0.04em;">Client Fabric</span>` : "";
-
-      return `
-        <tr>
-          <td><strong>${escapeHtml(order.ref)}</strong></td>
-          <td>${escapeHtml(order.name)}</td>
-          <td>${escapeHtml(cleanPiece)}${fabricBadge}${specs}</td>
-          <td>${escapeHtml(order.date)}</td>
-          <td><strong>${formatNaira(order.total)}</strong></td>
-          <td>
-            <span class="status-badge ${badgeClass}">${stageText}</span>
-            <div style="font-size:10px;color:${paymentStatusColor};margin-top:4px;font-weight:bold;">${paymentStatusText}</div>
-          </td>
-          <td>
-            <div class="status-controller" style="display:flex;flex-direction:column;gap:4px;">
-              <select class="stage-select" data-ref="${escapeHtml(order.ref)}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
-                ${dropdownOptions}
-              </select>
-              <select class="payment-pct-select" data-ref="${escapeHtml(order.ref)}" style="font-size:11px;padding:6px;border:1px solid var(--line);background:transparent;outline:none;cursor:pointer;color:var(--ink);">
-                ${pctOptions}
-              </select>
-              <div style="display:flex;gap:4px;margin-top:4px;">
-                <button class="print-invoice-btn" data-ref="${escapeHtml(order.ref)}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Inv</button>
-                <button class="print-receipt-btn" data-ref="${escapeHtml(order.ref)}" style="flex:1;background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;">Rec</button>
-              </div>
-              ${(function() {
-                const canDelete = ["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "");
-                return canDelete ? `<button class="delete-order-btn" data-ref="${escapeHtml(order.ref)}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 6px;text-transform:uppercase;margin-top:4px;width:100%;">Delete Order</button>` : "";
-              })()}
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join("");
-    
-    // Bind stage select dropdown change events
-    ordersTableBody.querySelectorAll(".stage-select").forEach((select) => {
-      select.onchange = (e) => {
-        const newStage = +e.target.value;
-        const order = allOrders.find(x => x.ref === e.target.dataset.ref);
-        if (!order) return;
-        const oldStage = order.currentStage;
-        if (oldStage !== newStage) {
-          order.currentStage = newStage;
-          localStorage.setItem("oban-orders", JSON.stringify(allOrders));
-          renderDashboard();
-        }
-      };
-    });
-
-    // Bind payment percentage select dropdown change events
-    ordersTableBody.querySelectorAll(".payment-pct-select").forEach((select) => {
-      select.onchange = (e) => {
-        const newPct = +e.target.value;
-        const order = allOrders.find(x => x.ref === e.target.dataset.ref);
-        if (!order) return;
-        const oldPct = order.paymentPercentage;
-        if (oldPct !== newPct) {
-          order.paymentPercentage = newPct;
-          localStorage.setItem("oban-orders", JSON.stringify(allOrders));
-          renderDashboard();
-        }
-      };
-    });
-
-    // Bind Print Invoice button events
-    ordersTableBody.querySelectorAll(".print-invoice-btn").forEach((btn) => {
-      btn.onclick = () => {
-        const ref = btn.dataset.ref;
-        const order = allOrders.find(x => x.ref === ref);
-        if (order && window.generateDocumentPrint) {
-          window.generateDocumentPrint(order, "invoice");
-        }
-      };
-    });
-
-    // Bind Print Receipt button events
-    ordersTableBody.querySelectorAll(".print-receipt-btn").forEach((btn) => {
-      btn.onclick = () => {
-        const ref = btn.dataset.ref;
-        const order = allOrders.find(x => x.ref === ref);
-        if (order && window.generateDocumentPrint) {
-          window.generateDocumentPrint(order, "receipt");
-        }
-      };
-    });
-
-    // Bind Delete Order button events
-    ordersTableBody.querySelectorAll(".delete-order-btn").forEach((btn) => {
-      btn.onclick = (e) => {
-        const ref = e.target.dataset.ref;
-        if (confirm(`Are you sure you want to permanently delete order ${ref}?`)) {
-          const allOrdersList = (JSON.parse(localStorage.getItem("oban-orders")) || []).filter(x => x.ref !== ref);
-          localStorage.setItem("oban-orders", JSON.stringify(allOrdersList));
-          renderDashboard();
-        }
-      };
-    });
+  if (!db.length) {
+    ordersTableBody.innerHTML = `<tr><td colspan="7" class="empty">${allOrders.length ? "No orders match these filters." : "No orders yet. Website orders appear here automatically."}</td></tr>`;
+    return;
   }
+
+  ordersTableBody.innerHTML = db.map((order) => {
+    const stage = Number(order.currentStage) || 1;
+    const ref = escapeHtml(order.ref);
+    const stageOptions = Object.keys(stageLabels).map(s => `<option value="${s}" ${stage === Number(s) ? "selected" : ""}>${stageLabels[s]}</option>`).join("");
+
+    let specs = measurementLine(order.measurements, false);
+    if (!specs && order.email) {
+      const p = profiles[String(order.email).trim().toLowerCase()];
+      specs = measurementLine(p && p.measurements, true);
+    }
+
+    const pct = typeof order.paymentPercentage === "number" ? order.paymentPercentage : 100;
+    const payment = stage === 1
+      ? `<span class="pay pay-part">Not paid yet</span>`
+      : `<span class="pay ${pct === 100 ? "" : "pay-part"}">${pct === 100 ? "Paid in full" : `Instalment ${pct}%`}</span>`;
+    const pctOptions = [100, 90, 80, 70, 60, 50].map(p => `<option value="${p}" ${pct === p ? "selected" : ""}>${p === 100 ? "Paid 100%" : `Paid ${p}%`}</option>`).join("");
+
+    // "OB-KF03 (Size L, Quantity 2)" reads as "OB-KF03 × 2"
+    const cleanPiece = String(order.piece || "")
+      .replace(/\s*\(\s*Size\s+[^,)]*,\s*Quantity\s+(\d+)\s*\)/gi, " × $1")
+      .replace(/\s*\(\s*Size\s+[^,)]*\)/gi, "")
+      .replace(/\(\s*Quantity\s+(\d+)\s*\)/gi, "× $1")
+      .trim();
+    const fabric = order.fabricSource === "client" ? `<span class="chip-fabric">Client fabric</span>` : "";
+
+    return `
+      <tr>
+        <td><span class="ref">${ref}</span>${order.orderType ? `<span class="cell-sub">${escapeHtml(order.orderType)}</span>` : ""}</td>
+        <td><span class="cell-main">${escapeHtml(order.name)}</span>${order.whatsapp ? `<span class="cell-sub">${escapeHtml(order.whatsapp)}</span>` : ""}</td>
+        <td><div class="clip" title="${escapeHtml(cleanPiece)}">${escapeHtml(cleanPiece)}${fabric}</div>${specs}</td>
+        <td class="nowrap">${escapeHtml(order.date)}</td>
+        <td class="num"><strong>${formatNaira(Number(order.total) || 0)}</strong></td>
+        <td><span class="badge st-${stage}">${stageLabels[stage] || "Unknown"}</span>${payment}</td>
+        <td>
+          <div class="row-controls">
+            <select class="sel-sm stage-select" data-ref="${ref}" aria-label="Status for ${ref}">${stageOptions}</select>
+            <select class="sel-sm payment-pct-select" data-ref="${ref}" aria-label="Payment for ${ref}">${pctOptions}</select>
+            <div class="acts">
+              <button type="button" class="act act-text print-invoice-btn" data-ref="${ref}" title="Print invoice">${ICON("print")}Invoice</button>
+              <button type="button" class="act act-text print-receipt-btn" data-ref="${ref}" title="Print receipt">${ICON("orders")}Receipt</button>
+              ${canDelete ? `<button type="button" class="act act-danger delete-order-btn" data-ref="${ref}" title="Delete order" aria-label="Delete order ${ref}">${ICON("trash")}</button>` : ""}
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  const findOrder = (ref) => allOrders.find(x => x.ref === ref);
+
+  ordersTableBody.querySelectorAll(".stage-select").forEach((select) => {
+    select.onchange = (e) => {
+      const order = findOrder(e.currentTarget.dataset.ref);
+      const newStage = +e.currentTarget.value;
+      if (!order || Number(order.currentStage) === newStage) return;
+      order.currentStage = newStage;
+      localStorage.setItem("oban-orders", JSON.stringify(allOrders));
+      renderDashboard();
+    };
+  });
+
+  ordersTableBody.querySelectorAll(".payment-pct-select").forEach((select) => {
+    select.onchange = (e) => {
+      const order = findOrder(e.currentTarget.dataset.ref);
+      const newPct = +e.currentTarget.value;
+      if (!order || order.paymentPercentage === newPct) return;
+      order.paymentPercentage = newPct;
+      localStorage.setItem("oban-orders", JSON.stringify(allOrders));
+      renderDashboard();
+    };
+  });
+
+  ordersTableBody.querySelectorAll(".print-invoice-btn, .print-receipt-btn").forEach((btn) => {
+    btn.onclick = () => {
+      const order = findOrder(btn.dataset.ref);
+      if (order && window.generateDocumentPrint) {
+        window.generateDocumentPrint(order, btn.classList.contains("print-invoice-btn") ? "invoice" : "receipt");
+      }
+    };
+  });
+
+  ordersTableBody.querySelectorAll(".delete-order-btn").forEach((btn) => {
+    btn.onclick = () => {
+      const ref = btn.dataset.ref;
+      if (!confirm(`Permanently delete order ${ref}? This cannot be undone.`)) return;
+      const allOrdersList = (JSON.parse(localStorage.getItem("oban-orders")) || []).filter(x => x.ref !== ref);
+      localStorage.setItem("oban-orders", JSON.stringify(allOrdersList));
+      renderDashboard();
+    };
+  });
 }
 
-// Bind search input filter keyups
-if (orderSearchInput) {
-  orderSearchInput.onkeyup = () => {
-    renderDashboard();
-  };
-}
+// Search and filters
+if (orderSearchInput) orderSearchInput.oninput = () => renderDashboard();
+const orderStageFilter = document.querySelector("#orderStageFilter");
+if (orderStageFilter) orderStageFilter.onchange = () => renderDashboard();
 
 // Bind filter drop down selection event
 const dateFilter = document.querySelector("#dateFilter");
@@ -1443,8 +1339,8 @@ if (exportBtn) {
     
     let csvContent = "Order Reference,Date,Customer Name,Garment Details,Total Price,Status\n";
     db.forEach((order) => {
-      const cleanPiece = `"${order.piece.replace(/"/g, '""')}"`;
-      const cleanName = `"${order.name.replace(/"/g, '""')}"`;
+      const cleanPiece = `"${String(order.piece || "").replace(/"/g, '""')}"`;
+      const cleanName = `"${String(order.name || "").replace(/"/g, '""')}"`;
       const statusText = stageLabels[order.currentStage];
       csvContent += `${order.ref},${order.date},${cleanName},${cleanPiece},${order.total},${statusText}\n`;
     });
@@ -1523,169 +1419,182 @@ if (offlineOrderForm) {
 // CUSTOMERS TAB
 // -------------------------------------------------------------
 const customersTableBody = document.querySelector("#customersTableBody");
-function renderCustomers() {
-  if (!customersTableBody) return;
+function customerList() {
   const allOrders = JSON.parse(localStorage.getItem("oban-orders")) || [];
   const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-  
-  // Aggregate stats per email
-  const customerMap = {};
+  const map = {};
   allOrders.forEach(o => {
     if (!o.email) return;
-    const emailKey = o.email.trim().toLowerCase();
-    if (!customerMap[emailKey]) {
-      customerMap[emailKey] = {
-        name: o.name,
-        email: o.email,
-        whatsapp: o.whatsapp || "",
-        totalSpend: 0,
-        ordersCount: 0
-      };
-    }
-    customerMap[emailKey].totalSpend += o.total;
-    customerMap[emailKey].ordersCount++;
+    const key = String(o.email).trim().toLowerCase();
+    if (!map[key]) map[key] = { name: o.name || "", email: key, whatsapp: o.whatsapp || "", totalSpend: 0, ordersCount: 0, lastOrder: "" };
+    if (Number(o.currentStage) !== 9) map[key].totalSpend += Number(o.total) || 0;
+    map[key].ordersCount++;
+    if (!map[key].lastOrder || Date.parse(o.date) > Date.parse(map[key].lastOrder)) map[key].lastOrder = o.date;
   });
-
-  // Ensure profiles who don't have orders yet also display in database
-  Object.keys(profiles).forEach(emailKey => {
-    if (!customerMap[emailKey]) {
-      const p = profiles[emailKey];
-      customerMap[emailKey] = {
-        name: p.name || "Anonymous",
-        email: p.email,
-        whatsapp: p.whatsapp || "",
-        totalSpend: 0,
-        ordersCount: 0
-      };
+  Object.entries(profiles).forEach(([key, p]) => {
+    const k = String(key).trim().toLowerCase();
+    if (!map[k]) map[k] = { name: (p && p.name) || "", email: k, whatsapp: (p && p.whatsapp) || "", totalSpend: 0, ordersCount: 0, lastOrder: "" };
+    else {
+      if (p && p.name) map[k].name = map[k].name || p.name;
+      if (p && p.whatsapp) map[k].whatsapp = map[k].whatsapp || p.whatsapp;
     }
+    map[k].profile = p;
   });
+  return Object.values(map).sort((a, b) => b.totalSpend - a.totalSpend || String(a.name).localeCompare(String(b.name)));
+}
 
-  const list = Object.values(customerMap);
+function renderCustomers() {
+  if (!customersTableBody) return;
+  const all = customerList();
+  const q = (document.querySelector("#customerSearchInput")?.value || "").trim().toLowerCase();
+  const list = q ? all.filter(c => `${c.name} ${c.email} ${c.whatsapp}`.toLowerCase().includes(q)) : all;
+
   if (!list.length) {
-    customersTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#8c867c;">No customers registered yet.</td></tr>`;
+    customersTableBody.innerHTML = `<tr><td colspan="6" class="empty">${all.length ? "No customers match your search." : "No customers yet. They appear after their first order or profile sign-in."}</td></tr>`;
     return;
   }
 
   customersTableBody.innerHTML = list.map(c => {
-    const emailKey = c.email.trim().toLowerCase();
-    const profile = profiles[emailKey];
-    
-    const pin = (profile && profile.pin) ? profile.pin : "1234";
-    
-    let measurementsLabel = "None";
-    if (profile && profile.measurements && profile.measurements.neck) {
-      measurementsLabel = "Saved (Specs Available)";
-    }
-    
+    const m = c.profile && c.profile.measurements;
+    const measured = m && Object.values(m).some(v => v);
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${escapeHtml(c.name)}</strong></td>
-        <td style="padding:14px 12px;">${escapeHtml(c.email)}</td>
-        <td style="padding:14px 12px;">${escapeHtml(c.whatsapp)}</td>
-        <td style="padding:14px 12px;color:var(--gold);font-weight:500;">${measurementsLabel}</td>
-        <td style="padding:14px 12px;text-align:center;font-family:monospace;letter-spacing:0.1em;">${pin}</td>
-        <td style="padding:14px 12px;"><strong>${formatNaira(c.totalSpend)}</strong></td>
-        <td style="padding:14px 12px;text-align:center;">${c.ordersCount}</td>
-        <td style="padding:14px 12px;">
-          <button class="reset-pin-btn" data-email="${escapeHtml(c.email)}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Reset PIN</button>
+      <tr>
+        <td><span class="cell-main">${escapeHtml(c.name || "Unnamed customer")}</span><span class="cell-sub">${escapeHtml(c.email)}</span></td>
+        <td class="nowrap">${escapeHtml(c.whatsapp) || '<span class="muted">Not given</span>'}</td>
+        <td>${measured ? `<span class="badge badge-ok">Saved</span>` : `<span class="badge badge-off">None</span>`}</td>
+        <td class="num"><strong>${formatNaira(c.totalSpend)}</strong></td>
+        <td class="num">${c.ordersCount}${c.lastOrder ? `<span class="cell-sub">Last: ${escapeHtml(c.lastOrder)}</span>` : ""}</td>
+        <td>
+          <div class="acts">
+            <button type="button" class="act act-text reset-pin-btn" data-email="${escapeHtml(c.email)}" title="Set a new profile PIN">${ICON("key")}Reset PIN</button>
+          </div>
         </td>
-      </tr>
-    `;
+      </tr>`;
   }).join("");
 
   customersTableBody.querySelectorAll(".reset-pin-btn").forEach(btn => {
-    btn.onclick = (e) => {
-      const email = e.target.dataset.email.toLowerCase();
-      const newPin = prompt("Enter new 4-digit PIN for " + email, "1234");
-      if (newPin !== null) {
-        if (newPin.length !== 4 || isNaN(newPin)) {
-          alert("PIN must be a 4-digit number.");
-          return;
-        }
-        const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-        if (profiles[email]) {
-          profiles[email].newPin = newPin; // the server stores only a hash of it
-          localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
-          renderCustomers();
-          alert("PIN updated successfully.");
-        }
+    btn.onclick = () => {
+      const email = String(btn.dataset.email || "").toLowerCase();
+      const newPin = prompt(`New 4-digit profile PIN for ${email}`);
+      if (newPin === null) return;
+      if (!/^\d{4}$/.test(newPin.trim())) {
+        alert("The PIN must be exactly 4 digits.");
+        return;
       }
+      const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
+      const c = all.find(x => x.email === email) || {};
+      profiles[email] = { ...(profiles[email] || { email, name: c.name || "", whatsapp: c.whatsapp || "" }), newPin: newPin.trim() };
+      localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
+      renderCustomers();
+      if (window.obanToast) window.obanToast(`PIN updated for ${email}. Share it with the customer directly.`);
     };
   });
 }
 
-// Bind customers export
+const customerSearchInput = document.querySelector("#customerSearchInput");
+if (customerSearchInput) customerSearchInput.oninput = () => renderCustomers();
+
+// CSV helpers shared by the exports and the customer import.
+function csvCell(value) {
+  const s = String(value === undefined || value === null ? "" : value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map(r => r.map(csvCell).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Parses CSV text, including quoted fields with commas, quotes and line breaks.
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  const src = String(text || "").replace(/^﻿/, "");
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (quoted) {
+      if (ch === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === ",") { row.push(cell); cell = ""; }
+    else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && src[i + 1] === "\n") i++;
+      row.push(cell); rows.push(row); row = []; cell = "";
+    } else cell += ch;
+  }
+  if (cell || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim()));
+}
+
 const exportCustomersBtn = document.querySelector("#exportCustomersBtn");
 if (exportCustomersBtn) {
   exportCustomersBtn.onclick = () => {
-    const allOrders = JSON.parse(localStorage.getItem("oban-orders")) || [];
-    const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-    const customerMap = {};
-    allOrders.forEach(o => {
-      if (!o.email) return;
-      const emailKey = o.email.trim().toLowerCase();
-      if (!customerMap[emailKey]) {
-        customerMap[emailKey] = { name: o.name, email: o.email, whatsapp: o.whatsapp || "", totalSpend: 0, count: 0 };
-      }
-      customerMap[emailKey].totalSpend += o.total;
-      customerMap[emailKey].count++;
+    const rows = [["Name", "Email", "WhatsApp", "Saved Measurements", "Total Spend", "Orders"]];
+    customerList().forEach(c => {
+      const m = c.profile && c.profile.measurements;
+      rows.push([c.name, c.email, c.whatsapp, m && Object.values(m).some(v => v) ? "Yes" : "No", c.totalSpend, c.ordersCount]);
     });
-    Object.keys(profiles).forEach(k => {
-      if (!customerMap[k]) {
-        customerMap[k] = { name: profiles[k].name || "", email: profiles[k].email, whatsapp: profiles[k].whatsapp || "", totalSpend: 0, count: 0 };
-      }
-    });
-
-    let csv = "Customer Name,Email,WhatsApp,Saved Measurements,Total Spend,Orders Count\n";
-    Object.values(customerMap).forEach(c => {
-      const p = profiles[c.email.trim().toLowerCase()];
-      const hasM = (p && p.measurements && p.measurements.neck) ? "Yes" : "No";
-      csv += `"${c.name.replace(/"/g,'""')}","${c.email}","${c.whatsapp}",${hasM},${c.totalSpend},${c.count}\n`;
-    });
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "oban_customers_registry.csv");
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    downloadCsv(`oban_customers_${new Date().toISOString().slice(0, 10)}.csv`, rows);
   };
 }
 
-// Bind customers import
+// Import: header row with Name, Email and WhatsApp (any order, any case).
+// Existing customers are never changed; only new emails are added.
 const importCustomersBtn = document.querySelector("#importCustomersBtn");
 const importCustomersInput = document.querySelector("#importCustomersInput");
 if (importCustomersBtn && importCustomersInput) {
   importCustomersBtn.onclick = () => importCustomersInput.click();
   importCustomersInput.onchange = (e) => {
     const file = e.target.files[0];
+    importCustomersInput.value = "";
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = function(evt) {
-      const lines = evt.target.result.split("\n");
-      const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
-      let count = 0;
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-        const cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
-        if (cols.length >= 3) {
-          const name = cols[0];
-          const email = cols[1].toLowerCase();
-          const whatsapp = cols[2];
-          const pin = cols[4] || "1234";
-          if (email && !profiles[email]) {
-            profiles[email] = { email: email, name: name, whatsapp: whatsapp, pin: pin };
-            count++;
-          }
-        }
+    reader.onload = (evt) => {
+      const rows = parseCsv(evt.target.result);
+      if (rows.length < 2) {
+        alert("That file has no customer rows.");
+        return;
       }
-      localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
+      const header = rows[0].map(h => String(h).trim().toLowerCase());
+      const col = (...names) => header.findIndex(h => names.some(n => h === n || h.includes(n)));
+      const iName = col("name", "customer");
+      const iEmail = col("email");
+      const iPhone = col("whatsapp", "phone", "mobile");
+      if (iEmail < 0) {
+        alert('The first row must be a header with an "Email" column (plus "Name" and "WhatsApp").');
+        return;
+      }
+      const profiles = JSON.parse(localStorage.getItem("oban-client-profiles") || "{}");
+      const known = new Set([...Object.keys(profiles).map(k => k.toLowerCase()), ...customerList().map(c => c.email)]);
+      let added = 0;
+      let skipped = 0;
+      rows.slice(1).forEach(r => {
+        const email = String(r[iEmail] || "").trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { skipped++; return; }
+        if (known.has(email)) { skipped++; return; }
+        profiles[email] = {
+          email,
+          name: iName >= 0 ? String(r[iName] || "").trim() : "",
+          whatsapp: iPhone >= 0 ? String(r[iPhone] || "").trim() : "",
+          importedAt: new Date().toISOString()
+        };
+        known.add(email);
+        added++;
+      });
+      if (added) localStorage.setItem("oban-client-profiles", JSON.stringify(profiles));
       renderCustomers();
-      alert(`Successfully imported ${count} new customer profiles!`);
+      alert(`Imported ${added} new customer${added === 1 ? "" : "s"}.${skipped ? ` ${skipped} row${skipped === 1 ? " was" : "s were"} skipped (already a customer or no valid email).` : ""}`);
     };
     reader.readAsText(file);
   };
@@ -1707,43 +1616,44 @@ let currentAddingImages = [];
 let pendingEditImageUpload = Promise.resolve();
 let pendingAddImageUpload = Promise.resolve();
 
-function renderImagePreview(container, images, onRemove) {
+function renderImagePreview(container, images, onRemove, onMakeMain) {
   if (!container) return;
-  container.innerHTML = "";
   if (!images || !images.length) {
-    container.innerHTML = '<span style="font-size:11px;color:#8c867c;">No images uploaded.</span>';
+    container.innerHTML = '<span class="hint">No photos yet.</span>';
     return;
   }
+  container.innerHTML = images.map((imgUrl, imgIdx) => imgUrl ? `
+    <div class="thumb-card">
+      <img src="${escapeHtml(imgUrl)}" alt="Photo ${imgIdx + 1}" loading="lazy">
+      <button type="button" class="thumb-remove" data-img-idx="${imgIdx}" title="Remove photo" aria-label="Remove photo ${imgIdx + 1}">${ICON("close")}</button>
+      ${imgIdx === 0 ? `<span class="thumb-main">Main photo</span>` : `<button type="button" class="thumb-set" data-img-idx="${imgIdx}">Make main</button>`}
+    </div>` : "").join("");
 
-  images.forEach((imgUrl, imgIdx) => {
-    if (!imgUrl) return;
-    const div = document.createElement("div");
-    div.style.position = "relative";
-    div.style.width = "65px";
-    div.style.height = "80px";
-    div.style.border = "1px solid var(--line)";
-    div.style.borderRadius = "4px";
-    div.style.overflow = "hidden";
-    div.style.background = "#eee5d5";
-    div.style.flexShrink = "0";
-    div.innerHTML = `
-      <img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;">
-      <button type="button" class="remove-preview-img-btn" data-img-idx="${imgIdx}" title="Remove image" style="position:absolute;top:2px;right:2px;background:rgba(176,58,46,0.9);color:white;border:none;border-radius:50%;width:18px;height:18px;font-size:12px;line-height:18px;text-align:center;cursor:pointer;padding:0;">&times;</button>
-    `;
-    container.appendChild(div);
-  });
-
-  container.querySelectorAll(".remove-preview-img-btn").forEach(btn => {
+  container.querySelectorAll(".thumb-remove").forEach(btn => {
     btn.onclick = (e) => {
       e.stopPropagation();
-      onRemove(+e.target.dataset.imgIdx);
+      onRemove(+btn.dataset.imgIdx);
     };
   });
+  container.querySelectorAll(".thumb-set").forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (onMakeMain) onMakeMain(+btn.dataset.imgIdx);
+    };
+  });
+}
+
+function moveToFront(list, idx) {
+  const [item] = list.splice(idx, 1);
+  list.unshift(item);
 }
 
 function renderEditImagePreview() {
   renderImagePreview(document.querySelector("#editImagePreviewContainer"), currentEditingImages, (imgIdx) => {
     currentEditingImages.splice(imgIdx, 1);
+    renderEditImagePreview();
+  }, (imgIdx) => {
+    moveToFront(currentEditingImages, imgIdx);
     renderEditImagePreview();
   });
 }
@@ -1751,6 +1661,9 @@ function renderEditImagePreview() {
 function renderAddImagePreview() {
   renderImagePreview(document.querySelector("#addImagePreviewContainer"), currentAddingImages, (imgIdx) => {
     currentAddingImages.splice(imgIdx, 1);
+    renderAddImagePreview();
+  }, (imgIdx) => {
+    moveToFront(currentAddingImages, imgIdx);
     renderAddImagePreview();
   });
 }
@@ -1829,43 +1742,59 @@ function renderInventory() {
   if (!inventoryTableBody) return;
   const allItems = sortCatalog(JSON.parse(localStorage.getItem("oban-products")) || []);
   const query = (inventorySearchInput?.value || "").trim().toLowerCase();
+  const category = document.querySelector("#inventoryCategoryFilter")?.value || "";
   const indexedList = allItems
     .map((item, originalIndex) => ({ item, originalIndex }))
+    .filter(({ item }) => !category || item.category === category)
     .filter(({ item }) => !query || `${item.name || ""} ${item.code || ""}`.toLowerCase().includes(query));
-  
+
+  if (typeof window.renderInventoryStats === "function") window.renderInventoryStats(allItems);
+
   if (!indexedList.length) {
-    inventoryTableBody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#8c867c;">No garments listed in catalog.</td></tr>`;
+    inventoryTableBody.innerHTML = `<tr><td colspan="7" class="empty">${allItems.length ? "No garments match these filters." : "No garments in the catalogue yet."}</td></tr>`;
     return;
   }
 
+  const canDelete = ["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "");
+  // Position within its collection, as shown on the website.
+  const positions = {};
+  allItems.forEach(item => {
+    positions[item.category] = (positions[item.category] || 0) + 1;
+    item._pos = positions[item.category];
+  });
+
   inventoryTableBody.innerHTML = indexedList.map(({ item, originalIndex }) => {
     const isFeatured = !!item.featured;
-    const mainImg = (item.images && item.images.length > 0) ? item.images[0] : '';
-    const photoCell = mainImg
-      ? `<img src="${mainImg}" style="width:42px;height:52px;object-fit:cover;border-radius:3px;border:1px solid var(--line);background:#eee5d5;" alt="${item.name || ''}">`
-      : `<div style="width:42px;height:52px;background:#eee5d5;border-radius:3px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:9px;color:#8c867c;text-align:center;line-height:1.1;">No pic</div>`;
+    const mainImg = (item.images && item.images.length > 0) ? item.images[0] : "";
+    const code = escapeHtml(item.code || "");
+    const price = Number(item.price) || 0;
+    const discount = Number(item.discount) || 0;
+    const photo = mainImg
+      ? `<img class="thumb" src="${escapeHtml(mainImg)}" alt="${escapeHtml(item.name || item.code)}" loading="lazy">`
+      : `<span class="thumb thumb-empty">${ICON("image")}</span>`;
+    const priceCell = discount > 0
+      ? `<strong>${formatNaira(Math.round(price * (1 - discount / 100)))}</strong><span class="cell-sub">${formatNaira(price)} less ${discount}%</span>`
+      : `<strong>${formatNaira(price)}</strong>`;
 
     return `
-    <tr style="border-bottom:1px solid var(--line);">
-      <td style="padding:10px 12px;vertical-align:middle;">${photoCell}</td>
-      <td style="padding:14px 12px;"><strong>${escapeHtml(item.code)}</strong></td>
-      <td style="padding:14px 12px;">${escapeHtml(item.name)}</td>
-      <td style="padding:14px 12px;"><span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;color:var(--ink);">${item.category || ""}</span></td>
-      <td style="padding:14px 12px;"><strong>${formatNaira(item.price || 0)}</strong></td>
-      <td style="padding:14px 12px;font-size:12px;color:#8c867c;max-width:300px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">${escapeHtml(item.desc || item.description)}</td>
-      <td style="padding:14px 12px;">
-        <button class="toggle-featured-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="${isFeatured ? 'background:#d4af37;color:#111;border:none;font-weight:700;' : 'background:transparent;border:1px solid var(--line);color:#8c867c;'}font-size:10px;padding:4px 10px;border-radius:2px;cursor:pointer;">
-          ${isFeatured ? '&#9733; Featured' : '&#9734; Standard'}
+    <tr>
+      <td>${photo}</td>
+      <td><span class="ref">${code}</span><span class="cell-sub">${escapeHtml(item.name && item.name !== item.code ? item.name : "")}${(item.images || []).length ? `${item.name && item.name !== item.code ? " · " : ""}${item.images.length} photo${item.images.length === 1 ? "" : "s"}` : ""}</span></td>
+      <td><span class="badge badge-plain">${escapeHtml(item.category || "Uncategorised")}</span><span class="cell-sub">Position ${item._pos}</span></td>
+      <td class="num">${priceCell}</td>
+      <td><div class="clip muted" title="${escapeHtml(item.desc || item.description)}">${escapeHtml(item.desc || item.description)}</div></td>
+      <td>
+        <button type="button" class="act act-text toggle-featured-btn ${isFeatured ? "act-on" : ""}" data-code="${code}" data-index="${originalIndex}" title="${isFeatured ? "Shown in featured sections. Click to make standard." : "Click to feature on the home page"}">
+          <svg class="ic ${isFeatured ? "ic-fill" : ""}"><use href="#i-star"/></svg>${isFeatured ? "Featured" : "Standard"}
         </button>
       </td>
-      <td style="padding:14px 12px;">
-        <div style="display:flex;gap:6px;">
-          <button class="edit-inv-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Edit</button>
-          ${["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "") ? "" : "<!--"}<button class="delete-inv-btn" data-code="${item.code || ''}" data-index="${originalIndex}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Delete</button>${["admin", "manager"].includes(window.obanStaffRole ? window.obanStaffRole() : "") ? "" : "-->"}
+      <td>
+        <div class="acts">
+          <button type="button" class="act edit-inv-btn" data-code="${code}" data-index="${originalIndex}" title="Edit garment" aria-label="Edit ${code}">${ICON("edit")}</button>
+          ${canDelete ? `<button type="button" class="act act-danger delete-inv-btn" data-code="${code}" data-index="${originalIndex}" title="Delete garment" aria-label="Delete ${code}">${ICON("trash")}</button>` : ""}
         </div>
       </td>
-    </tr>
-  `;
+    </tr>`;
   }).join("");
 
   inventoryTableBody.querySelectorAll(".toggle-featured-btn").forEach(btn => {
@@ -1901,17 +1830,14 @@ function renderInventory() {
       const firstImg = allImgs.length > 0 ? allImgs[0] : "";
       if (previewHeader) {
         previewHeader.innerHTML = `
-          <div style="width:55px;height:70px;border-radius:3px;overflow:hidden;border:1px solid var(--line);background:#eee5d5;flex-shrink:0;">
-            ${firstImg ? `<img src="${firstImg}" style="width:100%;height:100%;object-fit:cover;">` : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#8c867c;">No Photo</div>`}
-          </div>
-          <div style="flex-grow:1;">
-            <h4 style="margin:0 0 2px;font-size:15px;font-family:'Manrope',sans-serif;font-weight:600;color:var(--ink);">${item.name || item.code || 'Garment'}</h4>
-            <p style="margin:0 0 4px;font-size:12px;color:var(--gold);font-weight:600;">Code: ${item.code || ''} &bull; ${formatNaira(item.price || 0)}</p>
-            <span style="font-size:11px;background:#eee5d5;padding:2px 8px;border-radius:2px;color:var(--ink);font-weight:500;">${item.category || ''}</span>
+          ${firstImg ? `<img src="${escapeHtml(firstImg)}" alt="">` : `<span class="thumb-empty">${ICON("image")}</span>`}
+          <div>
+            <h4>${escapeHtml(item.name || item.code || "Garment")}</h4>
+            <p>${escapeHtml(item.code || "")} · ${formatNaira(item.price || 0)}</p>
+            <span class="cell-sub">${escapeHtml(item.category || "")}</span>
           </div>
         `;
       }
-      
       const editUrlInput = document.querySelector("#editImagesUrlInput");
       if (editUrlInput) {
         editUrlInput.value = "";
@@ -2130,6 +2056,10 @@ if (editInventoryForm) {
 if (inventorySearchInput) {
   inventorySearchInput.oninput = () => renderInventory();
 }
+const inventoryCategoryFilter = document.querySelector("#inventoryCategoryFilter");
+if (inventoryCategoryFilter) {
+  inventoryCategoryFilter.onchange = () => renderInventory();
+}
 // -------------------------------------------------------------
 // BLOG EDITOR TAB
 // -------------------------------------------------------------
@@ -2143,13 +2073,15 @@ const artImageBase64 = document.querySelector("#artImageBase64");
 if (artImageFile && artImageBase64) {
   artImageFile.onchange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        artImageBase64.value = evt.target.result;
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+    // Resized and stored on the server once; the article keeps only the URL.
+    const submit = blogArticleForm && blogArticleForm.querySelector("button[type=submit]");
+    if (submit) submit.disabled = true;
+    compressImageFile(file)
+      .then(dataUrl => (window.obanUploadImage ? window.obanUploadImage(dataUrl) : dataUrl))
+      .then(url => { artImageBase64.value = url; })
+      .catch(() => alert("That image could not be used. Please try a JPG or PNG."))
+      .finally(() => { if (submit) submit.disabled = false; });
   };
 }
 
@@ -2158,32 +2090,34 @@ function renderBlogFeed() {
   const list = JSON.parse(localStorage.getItem("oban-blog-articles")) || [];
   
   if (!list.length) {
-    articlesTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;color:#8c867c;">No articles written yet.</td></tr>`;
+    articlesTableBody.innerHTML = `<tr><td colspan="5" class="empty">No articles yet. Write one with the form.</td></tr>`;
     return;
   }
 
   articlesTableBody.innerHTML = list.map((art, idx) => {
+    const thumb = art.image
+      ? `<img class="thumb" src="${escapeHtml(art.image)}" alt="" loading="lazy">`
+      : `<span class="thumb thumb-empty">${ICON("image")}</span>`;
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${escapeHtml(art.title)}</strong></td>
-        <td style="padding:14px 12px;"><span style="font-size:11px;background:#eee5d5;padding:4px 8px;border-radius:2px;color:var(--ink);">${art.category}</span></td>
-        <td style="padding:14px 12px;">${art.date}</td>
-        <td style="padding:14px 12px;">${escapeHtml(art.author)}</td>
-        <td style="padding:14px 12px;">
-          <div style="display:flex;gap:6px;flex-wrap:wrap;">
-            <button class="edit-art-btn" data-index="${idx}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Edit</button>
-            <button class="delete-art-btn" data-index="${idx}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Delete</button>
-            <button class="copy-art-link-btn" data-filename="${art.filename || ''}" data-title="${escapeHtml(art.title)}" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Copy Link</button>
+      <tr>
+        <td><div class="art-cell">${thumb}<div><span class="cell-main">${escapeHtml(art.title)}</span><span class="cell-sub clip">${escapeHtml(art.excerpt || "")}</span></div></div></td>
+        <td><span class="badge badge-plain">${escapeHtml(art.category || "General")}</span></td>
+        <td class="nowrap">${escapeHtml(art.date)}</td>
+        <td class="nowrap">${escapeHtml(art.author)}</td>
+        <td>
+          <div class="acts">
+            <button type="button" class="act edit-art-btn" data-index="${idx}" title="Edit article" aria-label="Edit article">${ICON("edit")}</button>
+            <button type="button" class="act copy-art-link-btn" data-filename="${escapeHtml(art.filename || "")}" data-id="${escapeHtml(art.id || "")}" data-title="${escapeHtml(art.title)}" title="Copy link to this article" aria-label="Copy link">${ICON("link")}</button>
+            <button type="button" class="act act-danger delete-art-btn" data-index="${idx}" title="Delete article" aria-label="Delete article">${ICON("trash")}</button>
           </div>
         </td>
-      </tr>
-    `;
+      </tr>`;
   }).join("");
 
   // Bind Edit buttons
   articlesTableBody.querySelectorAll(".edit-art-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
+      const idx = +e.currentTarget.dataset.index;
       const list = JSON.parse(localStorage.getItem("oban-blog-articles")) || [];
       const art = list[idx];
       
@@ -2203,7 +2137,7 @@ function renderBlogFeed() {
   // Bind Delete buttons
   articlesTableBody.querySelectorAll(".delete-art-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
+      const idx = +e.currentTarget.dataset.index;
       if (confirm("Delete this article forever?")) {
         const list = JSON.parse(localStorage.getItem("oban-blog-articles")) || [];
         list.splice(idx, 1);
@@ -2214,26 +2148,30 @@ function renderBlogFeed() {
   });
 
   // Bind Copy Link buttons
+  // Articles that have their own page on the site keep that address; articles
+  // written in the dashboard are shown by /article?id=...
+  const STATIC_ARTICLE_PAGES = new Set([
+    "accessorizing-traditional-wear.html", "agbada-elegance.html", "art-of-bespoke-tailoring.html",
+    "caring-velvet-brocade.html", "choosing-right-outfit.html", "contemporary-menswear-global.html",
+    "corporate-kaftans-executive.html", "fabric-selection-kaftans.html", "father-son-matching.html",
+    "modern-groom-agbada.html", "suits-vs-kaftans.html", "why-kaftan.html"
+  ]);
   articlesTableBody.querySelectorAll(".copy-art-link-btn").forEach(btn => {
     btn.onclick = (e) => {
-      let fn = e.target.dataset.filename;
-      if (!fn) {
-        const title = e.target.dataset.title;
-        fn = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
-      }
-      const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/'));
-      const fullUrl = baseUrl + '/' + fn;
-      
-      navigator.clipboard.writeText(fullUrl).then(() => {
-        alert("Article link copied to clipboard:\n" + fullUrl);
-      }).catch(err => {
-        const el = document.createElement('textarea');
+      const { filename, id } = e.currentTarget.dataset;
+      const site = window.location.origin.replace("//dashboard.", "//");
+      const fullUrl = STATIC_ARTICLE_PAGES.has(filename)
+        ? `${site}/${filename.replace(/\.html$/, "")}`
+        : `${site}/article?id=${encodeURIComponent(id)}`;
+      const done = () => (window.obanToast ? window.obanToast(`Link copied: ${fullUrl}`) : alert(`Link copied:\n${fullUrl}`));
+      navigator.clipboard.writeText(fullUrl).then(done).catch(() => {
+        const el = document.createElement("textarea");
         el.value = fullUrl;
         document.body.appendChild(el);
         el.select();
-        document.execCommand('copy');
-        document.body.removeChild(el);
-        alert("Article link copied to clipboard:\n" + fullUrl);
+        document.execCommand("copy");
+        el.remove();
+        done();
       });
     };
   });
@@ -2330,21 +2268,21 @@ function renderVendors() {
   const list = JSON.parse(localStorage.getItem("oban-vendors")) || [];
   
   if (!list.length) {
-    vendorsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#8c867c;">No vendors registered.</td></tr>`;
+    vendorsTableBody.innerHTML = `<tr><td colspan="7" class="empty">No vendors registered.</td></tr>`;
     return;
   }
 
   vendorsTableBody.innerHTML = list.map((v, idx) => {
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${v.name}</strong></td>
-        <td style="padding:14px 12px;">${v.contactPerson}</td>
-        <td style="padding:14px 12px;">${v.email}</td>
-        <td style="padding:14px 12px;">${v.phone}</td>
-        <td style="padding:14px 12px;">${v.address}</td>
-        <td style="padding:14px 12px;"><strong>${v.currency}</strong></td>
-        <td style="padding:14px 12px;">
-          <button class="delete-vendor-btn" data-index="${idx}" style="background:transparent;border:1px solid #b03a2e;color:#b03a2e;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;">Remove</button>
+      <tr>
+        <td><span class="cell-main">${escapeHtml(v.name)}</span></td>
+        <td>${escapeHtml(v.contactPerson)}</td>
+        <td>${escapeHtml(v.email)}</td>
+        <td class="nowrap">${escapeHtml(v.phone)}</td>
+        <td><div class="clip">${escapeHtml(v.address)}</div></td>
+        <td><span class="badge badge-plain">${escapeHtml(v.currency)}</span></td>
+        <td>
+          <button type="button" class="act act-danger delete-vendor-btn" data-index="${idx}" title="Remove vendor" aria-label="Remove vendor">${ICON("trash")}</button>
         </td>
       </tr>
     `;
@@ -2352,7 +2290,7 @@ function renderVendors() {
 
   vendorsTableBody.querySelectorAll(".delete-vendor-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
+      const idx = +e.currentTarget.dataset.index;
       if (confirm("Remove this supplier from registry?")) {
         const list = JSON.parse(localStorage.getItem("oban-vendors")) || [];
         list.splice(idx, 1);
@@ -2369,35 +2307,35 @@ function renderPurchaseOrdersList() {
   const list = JSON.parse(localStorage.getItem("oban-purchase-orders")) || [];
   
   if (!list.length) {
-    poTableBody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:20px;color:#8c867c;">No Purchase Orders generated yet.</td></tr>`;
+    poTableBody.innerHTML = `<tr><td colspan="9" class="empty">No Purchase Orders generated yet.</td></tr>`;
     return;
   }
 
   poTableBody.innerHTML = list.map((po, idx) => {
     const isReceived = po.status === "Received";
     const amountStr = "\u20A6" + Number(po.amount).toLocaleString();
-    const invoiceLink = po.invoiceUrl ? `<a href="${po.invoiceUrl}" target="_blank" style="color:var(--gold);font-weight:bold;font-size:11px;text-decoration:underline;">View Invoice</a>` : `<button class="attach-inv-btn" data-id="${po.id}" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;border-radius:2px;">Attach Copy</button>`;
+    const invoiceLink = po.invoiceUrl ? `<a class="act act-text" href="${escapeHtml(po.invoiceUrl)}" target="_blank" rel="noopener">${ICON("external")}View</a>` : `<button type="button" class="act act-text attach-inv-btn" data-id="${escapeHtml(po.id)}">${ICON("upload")}Attach</button>`;
     
     let actions = "";
     if (po.status === "Pending") {
-      actions += `<button class="receive-po-btn" data-index="${idx}" style="background:transparent;border:1px solid #27ae60;color:#27ae60;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;border-radius:2px;">Acknowledge Receive</button>`;
+      actions += `<button type="button" class="act act-text receive-po-btn" data-index="${idx}">${ICON("inbox")}Mark received</button>`;
     } else {
-      actions += `<span style="font-size:11px;color:#27ae60;font-weight:bold;">COMPLETED</span>`;
+      actions += `<span class="badge badge-ok">Completed</span>`;
     }
 
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${po.id}</strong></td>
-        <td style="padding:14px 12px;">${po.date}</td>
-        <td style="padding:14px 12px;">${po.vendorName}</td>
-        <td style="padding:14px 12px;">${po.deliveryDate}</td>
-        <td style="padding:14px 12px;"><strong>${amountStr}</strong></td>
-        <td style="padding:14px 12px;text-align:center;font-weight:bold;color:${po.billed === "Yes" ? "#27ae60" : "#b03a2e"};">${po.billed}</td>
-        <td style="padding:14px 12px;"><span style="font-size:11px;font-weight:bold;color:${isReceived ? "#27ae60" : "#f39c12"};">${po.status}</span></td>
-        <td style="padding:14px 12px;text-align:center;">${invoiceLink}</td>
-        <td style="padding:14px 12px;">
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="print-po-btn" data-id="${po.id}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;border-radius:2px;">Print PO</button>
+      <tr>
+        <td><span class="ref">${escapeHtml(po.id)}</span></td>
+        <td class="nowrap">${escapeHtml(po.date)}</td>
+        <td>${escapeHtml(po.vendorName)}</td>
+        <td class="nowrap">${escapeHtml(po.deliveryDate)}</td>
+        <td class="num"><strong>${amountStr}</strong></td>
+        <td><span class="badge ${po.billed === "Yes" ? "badge-ok" : "st-1"}">${po.billed === "Yes" ? "Billed" : "Not billed"}</span></td>
+        <td><span class="badge ${isReceived ? "badge-ok" : "st-1"}">${escapeHtml(po.status)}</span></td>
+        <td>${invoiceLink}</td>
+        <td>
+          <div class="acts">
+            <button type="button" class="act act-text print-po-btn" data-id="${escapeHtml(po.id)}">${ICON("print")}Print</button>
             ${actions}
           </div>
         </td>
@@ -2408,7 +2346,7 @@ function renderPurchaseOrdersList() {
   // Bind Attach invoice
   poTableBody.querySelectorAll(".attach-inv-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const id = e.target.dataset.id;
+      const id = e.currentTarget.dataset.id;
       document.querySelector("#uploadInvoicePoId").value = id;
       if (uploadInvoiceDialog) uploadInvoiceDialog.showModal();
     };
@@ -2417,7 +2355,7 @@ function renderPurchaseOrdersList() {
   // Bind Print PO
   poTableBody.querySelectorAll(".print-po-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const id = e.target.dataset.id;
+      const id = e.currentTarget.dataset.id;
       const list = JSON.parse(localStorage.getItem("oban-purchase-orders")) || [];
       const poObj = list.find(x => x.id === id);
       const vendors = JSON.parse(localStorage.getItem("oban-vendors")) || [];
@@ -2431,7 +2369,7 @@ function renderPurchaseOrdersList() {
   // Bind Acknowledge Receive
   poTableBody.querySelectorAll(".receive-po-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
+      const idx = +e.currentTarget.dataset.index;
       const list = JSON.parse(localStorage.getItem("oban-purchase-orders")) || [];
       const poObj = list[idx];
       
@@ -2466,20 +2404,20 @@ function renderPurchaseReceivesList() {
   const receivedList = list.filter(po => po.status === "Received");
   
   if (!receivedList.length) {
-    receivesTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:20px;color:#8c867c;">No items received in warehouse yet.</td></tr>`;
+    receivesTableBody.innerHTML = `<tr><td colspan="6" class="empty">No items received in warehouse yet.</td></tr>`;
     return;
   }
 
   receivesTableBody.innerHTML = receivedList.map(po => {
     const amountStr = "\u20A6" + Number(po.amount).toLocaleString();
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${po.id}</strong></td>
-        <td style="padding:14px 12px;">${po.date}</td>
-        <td style="padding:14px 12px;">${po.vendorName}</td>
-        <td style="padding:14px 12px;">${po.deliveryDate}</td>
-        <td style="padding:14px 12px;"><strong>${amountStr}</strong></td>
-        <td style="padding:14px 12px;font-weight:bold;color:${po.billed === "Yes" ? "#27ae60" : "#b03a2e"};">${po.billed === "Yes" ? "Billed" : "Pending Bill Attachment"}</td>
+      <tr>
+        <td><span class="ref">${escapeHtml(po.id)}</span></td>
+        <td class="nowrap">${escapeHtml(po.date)}</td>
+        <td>${escapeHtml(po.vendorName)}</td>
+        <td class="nowrap">${escapeHtml(po.deliveryDate)}</td>
+        <td class="num"><strong>${amountStr}</strong></td>
+        <td><span class="badge ${po.billed === "Yes" ? "badge-ok" : "st-1"}">${po.billed === "Yes" ? "Billed" : "Awaiting bill"}</span></td>
       </tr>
     `;
   }).join("");
@@ -2491,31 +2429,31 @@ function renderBillsList() {
   const list = JSON.parse(localStorage.getItem("oban-bills")) || [];
   
   if (!list.length) {
-    billsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#8c867c;">No bills registered.</td></tr>`;
+    billsTableBody.innerHTML = `<tr><td colspan="7" class="empty">No bills registered.</td></tr>`;
     return;
   }
 
   billsTableBody.innerHTML = list.map((bill, idx) => {
     const isPaid = bill.status === "Paid";
     const amountStr = "\u20A6" + Number(bill.amount).toLocaleString();
-    const action = isPaid ? `<span style="color:#27ae60;font-weight:bold;font-size:11px;">SETTLED</span>` : `<button class="pay-bill-btn" data-index="${idx}" style="background:transparent;border:1px solid #27ae60;color:#27ae60;font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;border-radius:2px;">Record Payment</button>`;
+    const action = isPaid ? `<span class="badge badge-ok">Settled</span>` : `<button type="button" class="act act-text pay-bill-btn" data-index="${idx}">${ICON("wallet")}Record payment</button>`;
 
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${bill.id}</strong></td>
-        <td style="padding:14px 12px;">${bill.poId}</td>
-        <td style="padding:14px 12px;">${bill.vendorName}</td>
-        <td style="padding:14px 12px;">${bill.dateCreated}</td>
-        <td style="padding:14px 12px;"><strong>${amountStr}</strong></td>
-        <td style="padding:14px 12px;font-weight:bold;color:${isPaid ? "#27ae60" : "#b03a2e"};">${bill.status}</td>
-        <td style="padding:14px 12px;">${action}</td>
+      <tr>
+        <td><span class="ref">${escapeHtml(bill.id)}</span></td>
+        <td>${escapeHtml(bill.poId)}</td>
+        <td>${escapeHtml(bill.vendorName)}</td>
+        <td class="nowrap">${escapeHtml(bill.dateCreated)}</td>
+        <td class="num"><strong>${amountStr}</strong></td>
+        <td><span class="badge ${isPaid ? "badge-ok" : "st-1"}">${escapeHtml(bill.status)}</span></td>
+        <td>${action}</td>
       </tr>
     `;
   }).join("");
 
   billsTableBody.querySelectorAll(".pay-bill-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.target.dataset.index;
+      const idx = +e.currentTarget.dataset.index;
       const list = JSON.parse(localStorage.getItem("oban-bills")) || [];
       const bill = list[idx];
       
@@ -2557,30 +2495,28 @@ function renderPaymentsList() {
   const list = JSON.parse(localStorage.getItem("oban-payments")) || [];
   
   if (!list.length) {
-    paymentsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:#8c867c;">No ledger entries found.</td></tr>`;
+    paymentsTableBody.innerHTML = `<tr><td colspan="7" class="empty">No ledger entries found.</td></tr>`;
     return;
   }
 
   paymentsTableBody.innerHTML = list.map(pay => {
     const amountStr = "\u20A6" + Number(pay.amount).toLocaleString();
     return `
-      <tr style="border-bottom:1px solid var(--line);">
-        <td style="padding:14px 12px;"><strong>${pay.id}</strong></td>
-        <td style="padding:14px 12px;">${pay.billId}</td>
-        <td style="padding:14px 12px;">${pay.poId}</td>
-        <td style="padding:14px 12px;">${pay.vendorName}</td>
-        <td style="padding:14px 12px;">${pay.datePaid}</td>
-        <td style="padding:14px 12px;"><strong>${amountStr}</strong></td>
-        <td style="padding:14px 12px;">
-          <button class="print-payment-btn" data-id="${pay.id}" style="background:transparent;border:1px solid var(--line);color:var(--text);font-size:9px;font-weight:bold;cursor:pointer;padding:4px 8px;text-transform:uppercase;border-radius:2px;">Print Expense Slip</button>
-        </td>
+      <tr>
+        <td><span class="ref">${escapeHtml(pay.id)}</span></td>
+        <td>${escapeHtml(pay.billId)}</td>
+        <td>${escapeHtml(pay.poId)}</td>
+        <td>${escapeHtml(pay.vendorName)}</td>
+        <td class="nowrap">${escapeHtml(pay.datePaid)}</td>
+        <td class="num"><strong>${amountStr}</strong></td>
+        <td><button type="button" class="act act-text print-payment-btn" data-id="${escapeHtml(pay.id)}">${ICON("print")}Expense slip</button></td>
       </tr>
     `;
   }).join("");
 
   paymentsTableBody.querySelectorAll(".print-payment-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const id = e.target.dataset.id;
+      const id = e.currentTarget.dataset.id;
       const list = JSON.parse(localStorage.getItem("oban-payments")) || [];
       const paymentObj = list.find(x => x.id === id);
       const pos = JSON.parse(localStorage.getItem("oban-purchase-orders")) || [];
@@ -2677,14 +2613,12 @@ function addPOItemRow() {
   const rowId = "po-row-" + Date.now();
   const div = document.createElement("div");
   div.id = rowId;
-  div.style.display = "flex";
-  div.style.gap = "10px";
-  div.style.alignItems = "center";
+  div.className = "line-item";
   div.innerHTML = `
-    <input type="text" placeholder="Item Name (e.g. Linen Fabric)" style="flex-grow:1; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <input type="number" placeholder="Qty" class="row-qty" min="1" value="1" style="width:60px; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <input type="number" placeholder="Unit Price (\u20A6)" class="row-price" style="width:100px; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <button type="button" class="del-row-btn" style="background:transparent; border:none; color:#b03a2e; font-size:16px; cursor:pointer; font-weight:bold;">&times;</button>
+    <input type="text" placeholder="Item, e.g. linen fabric" aria-label="Item" required>
+    <input type="number" placeholder="Qty" class="row-qty" min="1" value="1" aria-label="Quantity" required>
+    <input type="number" placeholder="Unit \u20A6" class="row-price" aria-label="Unit price" required>
+    <button type="button" class="act act-danger del-row-btn" aria-label="Remove item">${ICON("close")}</button>
   `;
   
   div.querySelector(".del-row-btn").onclick = () => {
@@ -2819,14 +2753,12 @@ function addInvoiceRow() {
   const rowId = "inv-row-" + Date.now();
   const div = document.createElement("div");
   div.id = rowId;
-  div.style.display = "flex";
-  div.style.gap = "10px";
-  div.style.alignItems = "center";
+  div.className = "line-item";
   div.innerHTML = `
-    <input type="text" placeholder="Description (e.g. Bespoke Cashmere Kaftan)" style="flex-grow:1; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <input type="number" placeholder="Qty" min="1" value="1" style="width:60px; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <input type="number" placeholder="Amount (\u20A6)" style="width:120px; font-size:12px; border:1px solid var(--line); padding:6px;" required>
-    <button type="button" class="del-row-btn" style="background:transparent; border:none; color:#b03a2e; font-size:16px; cursor:pointer; font-weight:bold;">&times;</button>
+    <input type="text" placeholder="Description, e.g. cashmere kaftan" aria-label="Description" required>
+    <input type="number" placeholder="Qty" min="1" value="1" aria-label="Quantity" required>
+    <input type="number" placeholder="Amount \u20A6" aria-label="Amount" required>
+    <button type="button" class="act act-danger del-row-btn" aria-label="Remove item">${ICON("close")}</button>
   `;
   div.querySelector(".del-row-btn").onclick = () => {
     if (invoiceItemsContainer.children.length > 1) {
@@ -2927,7 +2859,7 @@ function renderSubscribers() {
   const subList = Object.values(subscribers).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   
   if (subList.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="3" style="text-align:center;color:#8c867c;padding:30px;">No subscribers found.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="3" class="empty">No subscribers yet.</td></tr>`;
     return;
   }
   
@@ -2942,11 +2874,9 @@ function renderSubscribers() {
     });
     return `
       <tr>
-        <td style="padding:14px 12px;"><strong>${escapeHtml(sub.email)}</strong></td>
-        <td style="padding:14px 12px;">${formattedDate}</td>
-        <td style="padding:14px 12px; text-align:center;">
-          <button class="delete-subscriber-btn" data-email="${escapeHtml(sub.email)}" style="background:#b03a2e;color:white;border:none;padding:4px 8px;font-size:10px;font-weight:bold;cursor:pointer;font-family:'Manrope';border-radius:2px;text-transform:uppercase;">Delete</button>
-        </td>
+        <td><span class="cell-main">${escapeHtml(sub.email)}</span></td>
+        <td>${formattedDate}</td>
+        <td class="num"><button type="button" class="act act-danger delete-subscriber-btn" data-email="${escapeHtml(sub.email)}" title="Remove subscriber" aria-label="Remove ${escapeHtml(sub.email)}">${ICON("trash")}</button></td>
       </tr>
     `;
   }).join("");

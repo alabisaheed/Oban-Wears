@@ -210,6 +210,14 @@ server.listen(0, async () => {
     const profiles = (await call("/api/admin?c=profiles", { token: admin })).body.changes.profiles.upsert;
     check("PIN hash never reaches the dashboard", profiles["ada@example.com"] && !profiles["ada@example.com"].pinHash);
 
+    // ---- Blog articles written in the dashboard are public
+    await call("/api/admin", { method: "POST", token: admin, body: { c: "articles", upsert: { "art-9": { id: "art-9", title: "Care guide", content: "Line one", excerpt: "Short", sortIndex: 0 } } } });
+    const articles = (await call("/api/articles")).body;
+    check("articles listed without full text", Array.isArray(articles) && articles.some((x) => x.id === "art-9" && x.content === undefined), articles);
+    const one = await call("/api/articles?id=art-9");
+    check("single article has its text", one.status === 200 && one.body.content === "Line one", one.body);
+    check("unknown article is 404", (await call("/api/articles?id=nope")).status === 404);
+
     // ---- Codes can be switched off in an emergency
     process.env.LOGIN_OTP = "off";
     const direct = await call("/api/auth", { method: "POST", body: { action: "login", email: "tailor@oban.test", password: "new-tailor-password" } });

@@ -13,7 +13,6 @@ body.obl-signed-out > footer {
   --obl-ink: var(--ink, #080806);
   --obl-night: #1d1c19;
   --obl-gold: var(--gold, #d3ab69);
-  --obl-gold-deep: #a8823f;
   --obl-brown: var(--brown, #4a3324);
   --obl-paper: var(--paper, #f8f5ee);
   --obl-cream: var(--cream, #eee5d5);
@@ -216,7 +215,7 @@ body.obl-signed-out > footer {
 }
 
 .obl-link:disabled {
-  color: #a39d94;
+  color: #8c867c;
   cursor: default;
   text-decoration: none;
 }
@@ -313,9 +312,9 @@ body.obl-signed-out > footer {
 }
 
 .obl-error {
-  background: #fbefed;
-  border: 1px solid #ebc4bd;
-  color: #9b2c1f;
+  background: rgba(74, 51, 36, 0.07);
+  border: 1px solid rgba(74, 51, 36, 0.28);
+  color: #4a3324;
   border-radius: 4px;
   padding: 10px 12px;
   font-size: 0.88rem;
@@ -324,8 +323,8 @@ body.obl-signed-out > footer {
 }
 
 .obl-note {
-  background: #f7efe0;
-  border: 1px solid #e6d3ad;
+  background: rgba(211, 171, 105, 0.14);
+  border: 1px solid rgba(211, 171, 105, 0.45);
   color: var(--obl-brown);
   border-radius: 4px;
   padding: 10px 12px;
