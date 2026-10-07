@@ -50,18 +50,31 @@ const detailsPiece = document.querySelector("#detailsPiece");
 const detailsTotal = document.querySelector("#detailsTotal");
 const resultSubtitle = document.querySelector("#resultSubtitle");
 
-function performTrack(code) {
-  if (!code) return;
-  const cleanCode = code.trim().toUpperCase();
-  
-  // Try reading from local database first
-  const localDb = JSON.parse(localStorage.getItem("oban-orders")) || [];
-  let order = localDb.find(x => x.ref.toUpperCase() === cleanCode);
-  
-  // Fall back to static mock database
-  if (!order) {
-    order = orderDatabase[cleanCode];
+function escapeText(value) {
+  const div = document.createElement("div");
+  div.textContent = value === undefined || value === null ? "" : String(value);
+  return div.innerHTML;
+}
+
+// Looks the reference up on the server (live order status from the dashboard).
+async function fetchOrder(cleanCode) {
+  try {
+    const res = await fetch(`/api/track?ref=${encodeURIComponent(cleanCode)}`, { cache: "no-store" });
+    const data = await res.json();
+    if (data && data.found) return { ...data, name: data.firstName };
+  } catch (e) {
+    console.warn("Tracking lookup failed:", e);
   }
+  return null;
+}
+
+async function performTrack(code) {
+  if (!code) return;
+  const cleanCode = code.trim().toUpperCase().replace(/^#/, "");
+  if (resultSubtitle) resultSubtitle.textContent = "Looking up your order…";
+
+  // Sample references shown on the page still work as a demo.
+  let order = (await fetchOrder(cleanCode)) || orderDatabase[cleanCode];
   
   if (!trackerResults) return;
   
@@ -90,7 +103,7 @@ function performTrack(code) {
     detailsRef.textContent = order.ref;
     detailsName.textContent = order.name;
     const fabricBadge = order.fabricSource === "client" ? ` <span style="font-size:9px;background:#b03a2e;color:white;padding:2px 4px;border-radius:2px;font-weight:bold;margin-left:6px;display:inline-block;vertical-align:middle;text-transform:uppercase;">Client's Fabric</span>` : "";
-    detailsPiece.innerHTML = `${order.piece}${fabricBadge}`;
+    detailsPiece.innerHTML = `${escapeText(order.piece)}${fabricBadge}`;
     detailsTotal.innerHTML = `<strong>${formattedTotal}</strong>`;
     
     // Show sections if hidden

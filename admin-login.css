@@ -1,0 +1,552 @@
+/* Oban Wears dashboard sign-in.
+   Desktop: split layout (brand story left, sign-in card right).
+   Phones: app-style screen (compact dark header, full-width cream sheet with the form).
+   Colours and fonts follow the site palette in styles.css. */
+
+body.obl-signed-out .site-header,
+body.obl-signed-out .mobile-nav,
+body.obl-signed-out > footer {
+  display: none;
+}
+
+.obl-root {
+  --obl-ink: var(--ink, #080806);
+  --obl-night: #1d1c19;
+  --obl-gold: var(--gold, #d3ab69);
+  --obl-gold-deep: #a8823f;
+  --obl-brown: var(--brown, #4a3324);
+  --obl-paper: var(--paper, #f8f5ee);
+  --obl-cream: var(--cream, #eee5d5);
+  --obl-muted: #6e6962;
+  --obl-line: #ddd3c3;
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  overflow: clip;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(900px 560px at 12% 0%, rgba(211, 171, 105, 0.16), transparent 60%),
+    radial-gradient(700px 480px at 100% 100%, rgba(74, 51, 36, 0.45), transparent 60%),
+    linear-gradient(160deg, var(--obl-night) 0%, var(--obl-ink) 72%);
+  font-family: "DM Sans", sans-serif;
+  color: #f2ede4;
+}
+
+.obl-root *,
+.obl-root *::before,
+.obl-root *::after {
+  box-sizing: border-box;
+}
+
+.obl-root [hidden] {
+  display: none !important;
+}
+
+.obl-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 1160px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 72px;
+  align-items: center;
+}
+
+/* ── Brand story ── */
+.obl-brand {
+  max-width: 560px;
+}
+
+.obl-logo {
+  display: inline-block;
+  margin-bottom: 44px;
+}
+
+.obl-logo img {
+  display: block;
+  height: 46px;
+  width: auto;
+}
+
+.obl-eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--obl-gold);
+  margin: 0 0 18px;
+}
+
+.obl-headline {
+  font-family: "Manrope", sans-serif;
+  font-size: clamp(2.2rem, 3.8vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.04;
+  letter-spacing: -0.045em;
+  margin: 0 0 22px;
+  color: #fff;
+}
+
+.obl-sub {
+  font-size: 1.02rem;
+  line-height: 1.7;
+  color: #bdb8b0;
+  margin: 0 0 40px;
+  max-width: 440px;
+}
+
+.obl-points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.obl-points li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.95rem;
+  color: #e7e1d6;
+}
+
+.obl-point-icon {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(211, 171, 105, 0.55);
+  background: rgba(211, 171, 105, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--obl-gold);
+}
+
+/* ── Sign-in card ── */
+.obl-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+
+.obl-card {
+  width: 100%;
+  max-width: 460px;
+  background: var(--obl-paper);
+  color: var(--obl-ink);
+  border-radius: 6px;
+  padding: 34px 32px 28px;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+  border-top: 3px solid var(--obl-gold);
+}
+
+.obl-card h2 {
+  font-family: "Manrope", sans-serif;
+  color: var(--obl-ink);
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin: 0 0 8px;
+}
+
+.obl-help {
+  font-size: 0.93rem;
+  line-height: 1.55;
+  color: var(--obl-muted);
+  margin: 0 0 22px;
+}
+
+.obl-help strong {
+  color: var(--obl-ink);
+}
+
+.obl-field {
+  margin-bottom: 18px;
+}
+
+.obl-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 7px;
+}
+
+.obl-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--obl-ink);
+  margin-bottom: 7px;
+}
+
+.obl-label-row .obl-label {
+  margin-bottom: 0;
+}
+
+.obl-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--obl-brown);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 51, 36, 0.3);
+  text-underline-offset: 3px;
+}
+
+.obl-link:hover {
+  color: var(--obl-ink);
+  text-decoration-color: currentColor;
+}
+
+.obl-link:disabled {
+  color: #a39d94;
+  cursor: default;
+  text-decoration: none;
+}
+
+.obl-input-wrap {
+  position: relative;
+}
+
+.obl-input {
+  width: 100%;
+  height: 48px;
+  border: 1px solid var(--obl-line);
+  border-radius: 4px;
+  padding: 0 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--obl-ink);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.obl-input:focus {
+  border-color: var(--obl-gold);
+  box-shadow: 0 0 0 4px rgba(211, 171, 105, 0.22);
+}
+
+.obl-input.has-toggle {
+  padding-right: 48px;
+}
+
+.obl-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--obl-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.obl-btn {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 4px;
+  background: var(--obl-ink);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.05s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.obl-btn:hover:not(:disabled) {
+  background: var(--obl-brown);
+}
+
+.obl-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.obl-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.obl-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: var(--obl-gold);
+  border-radius: 50%;
+  animation: obl-spin 0.7s linear infinite;
+}
+
+@keyframes obl-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.obl-error {
+  background: #fbefed;
+  border: 1px solid #ebc4bd;
+  color: #9b2c1f;
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.obl-note {
+  background: #f7efe0;
+  border: 1px solid #e6d3ad;
+  color: var(--obl-brown);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.obl-foot {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: var(--obl-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.obl-protected {
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(242, 237, 228, 0.55);
+  text-align: center;
+}
+
+/* ── 6-digit code boxes ── */
+.obl-code {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 54px));
+  justify-content: center;
+  gap: 10px;
+  margin: 4px 0 24px;
+}
+
+.obl-code input {
+  width: 100%;
+  height: 60px;
+  border: 1px solid var(--obl-line);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 1.55rem;
+  font-weight: 600;
+  font-family: "Manrope", sans-serif;
+  color: var(--obl-ink);
+  background: #fff;
+  outline: none;
+  padding: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.obl-code input:focus {
+  border-color: var(--obl-gold);
+  box-shadow: 0 0 0 4px rgba(211, 171, 105, 0.22);
+}
+
+/* ── Tablets: single column, still a floating card ── */
+@media (max-width: 960px) {
+  .obl-shell {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    max-width: 520px;
+  }
+
+  .obl-brand {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .obl-logo {
+    margin-bottom: 22px;
+  }
+
+  .obl-logo img {
+    margin: 0 auto;
+  }
+
+  .obl-sub {
+    margin: 0 auto;
+  }
+
+  .obl-points {
+    display: none;
+  }
+
+  .obl-headline {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+}
+
+/* ── Phones: app-style screen ── */
+@media (max-width: 640px) {
+  .obl-root {
+    display: block;
+    padding: 0;
+    background:
+      radial-gradient(420px 260px at 15% 0%, rgba(211, 171, 105, 0.18), transparent 70%),
+      linear-gradient(170deg, var(--obl-night) 0%, var(--obl-ink) 100%);
+  }
+
+  .obl-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-width: none;
+  }
+
+  .obl-brand {
+    padding: calc(26px + env(safe-area-inset-top, 0px)) 24px 30px;
+    text-align: left;
+  }
+
+  .obl-logo {
+    margin-bottom: 22px;
+  }
+
+  .obl-logo img {
+    height: 34px;
+    margin: 0;
+  }
+
+  .obl-eyebrow {
+    font-size: 0.64rem;
+    letter-spacing: 0.18em;
+    margin-bottom: 8px;
+  }
+
+  .obl-headline {
+    font-size: 1.6rem;
+    line-height: 1.12;
+    margin: 0;
+  }
+
+  .obl-sub {
+    display: none;
+  }
+
+  .obl-side {
+    flex: 1 1 auto;
+    align-items: stretch;
+    gap: 0;
+    background: var(--obl-paper);
+    border-radius: 22px 22px 0 0;
+    padding: 30px 22px calc(22px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  .obl-card {
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 0;
+    border-radius: 0;
+    border-top: 0;
+    box-shadow: none;
+    background: transparent;
+    flex: 1 1 auto;
+  }
+
+  .obl-card h2 {
+    font-size: 1.55rem;
+  }
+
+  .obl-help {
+    font-size: 0.97rem;
+    margin-bottom: 24px;
+  }
+
+  .obl-field {
+    margin-bottom: 20px;
+  }
+
+  /* 16px+ text stops iPhone zooming in on focus; taller fields are easier to tap */
+  .obl-input {
+    height: 54px;
+    font-size: 1.05rem;
+  }
+
+  .obl-btn {
+    height: 54px;
+    margin-top: 6px;
+  }
+
+  .obl-link {
+    font-size: 0.95rem;
+    padding: 6px 4px;
+  }
+
+  .obl-code {
+    grid-template-columns: repeat(6, minmax(0, 58px));
+    gap: 8px;
+    margin: 6px 0 26px;
+  }
+
+  .obl-code input {
+    height: 58px;
+    font-size: 1.5rem;
+  }
+
+  .obl-protected {
+    margin-top: 28px;
+    color: #8c867c;
+  }
+}
+
+@media (max-width: 360px) {
+  .obl-side {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .obl-code {
+    gap: 6px;
+  }
+
+  .obl-code input {
+    height: 52px;
+    font-size: 1.3rem;
+  }
+}

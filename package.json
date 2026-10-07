@@ -1,0 +1,19 @@
+{
+  "name": "oban-wears",
+  "private": true,
+  "description": "Oban Wears storefront, dashboard and API (Vercel).",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/dev-server.cjs",
+    "test": "node scripts/test-api.cjs && node scripts/test-api.cjs --postgres"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
+    "nodemailer": "^7.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
+  }
+}

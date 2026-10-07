@@ -1,0 +1,11 @@
+# Files that belong to the old cPanel hosting or local tooling, not the website.
+api.php
+.htaccess
+preview-server.js
+test_preview.html
+oban-products-catalog.csv
+firebase-config.js
+scripts/
+.data/
+.env*
+!.env.example
