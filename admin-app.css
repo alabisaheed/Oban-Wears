@@ -94,17 +94,22 @@ body:not(.obl-signed-out) {
   flex-direction: column;
   background: var(--ink);
   color: var(--cream);
-  padding: 18px 12px 12px;
+  padding: clamp(10px, 2vh, 18px) 12px clamp(8px, 1.4vh, 12px);
+  /* Sizes below follow the window height so every section fits without a
+     scrollbar; scrolling is only a last resort on very short windows. */
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(211, 171, 105, 0.3) transparent;
+  scrollbar-width: none;
+}
+
+.adm-side::-webkit-scrollbar {
+  display: none;
 }
 
 .adm-side-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 8px 18px;
+  padding: 2px 8px clamp(10px, 2vh, 18px);
   border-bottom: 1px solid rgba(238, 229, 213, 0.08);
   margin-bottom: 8px;
 }
@@ -127,7 +132,7 @@ body:not(.obl-signed-out) {
 }
 
 .adm-nav-label {
-  margin: 14px 10px 6px;
+  margin: clamp(6px, 1.5vh, 14px) 10px clamp(2px, 0.5vh, 6px);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.14em;
@@ -141,7 +146,7 @@ body:not(.obl-signed-out) {
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 8px 10px;
+  padding: clamp(4px, 0.85vh, 8px) 10px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -209,7 +214,7 @@ body:not(.obl-signed-out) {
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 8px 10px;
+  padding: clamp(4px, 0.85vh, 8px) 10px;
   color: rgba(238, 229, 213, 0.72);
   text-decoration: none;
   border-radius: var(--radius-sm);
@@ -2084,5 +2089,27 @@ body:not(.obl-signed-out) {
   .art-cell {
     min-width: 0;
     text-align: left;
+  }
+}
+
+/* Short windows: drop the section headings so the menu still fits. */
+@media (max-height: 640px) {
+  .adm-nav-label {
+    display: none;
+  }
+
+  .adm-nav {
+    gap: 1px;
+  }
+
+  .adm-side-foot {
+    margin-top: 6px;
+    padding-top: 6px;
+  }
+}
+
+@media (max-width: 1360px) {
+  .split-wide-left {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

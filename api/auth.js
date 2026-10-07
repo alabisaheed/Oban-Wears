@@ -4,6 +4,7 @@
 //   POST {action: "verify", challenge, code}          -> {token, user}
 //   POST {action: "resend", challenge}                -> {destination}
 //   POST {action: "changePassword", current, password} (Bearer token)
+//   POST {action: "testEmail"}                       (admin) sends a test email to yourself
 //   GET  (Bearer token)                                returns the signed-in user
 // With LOGIN_OTP=off the code step is skipped and login returns {token, user}.
 const db = require("./_lib/db");
@@ -79,7 +80,8 @@ async function changePassword(req, body) {
 module.exports = handler({
   GET: async (req, res) => {
     const user = auth.requireStaff(req);
-    send(res, 200, { user: publicUser(user) });
+    const security = user.role === "admin" ? { codes: auth.loginCodesEnabled(), email: mail.configured() } : undefined;
+    send(res, 200, { user: publicUser(user), security });
   },
 
   POST: async (req, res) => {
@@ -101,6 +103,11 @@ module.exports = handler({
       case "changePassword":
         await changePassword(req, body);
         return send(res, 200, { ok: true });
+      case "testEmail": {
+        const session = auth.requireStaff(req, ["admin"]);
+        const result = await mail.sendTest(session.email);
+        return send(res, 200, { ok: true, to: session.email, via: result.via, codesOn: auth.loginCodesEnabled() });
+      }
       default:
         throw new HttpError(400, "Unknown action");
     }

@@ -75,6 +75,7 @@
     document.title = `${TITLES[name]} | Oban Wears Dashboard`;
     (RENDER_ON_OPEN[name] || []).forEach(call);
     if (name === "overview") renderOverview();
+    if (name === "database") renderSecurity();
     closeDrawer();
     if (push && location.hash !== `#${name}`) history.replaceState(null, "", `#${name}`);
     try { sessionStorage.setItem("oban-admin-tab", name); } catch (e) {}
@@ -300,6 +301,60 @@
       rows.push([p.code, p.name, p.category, p.price, p.discount || 0, p.featured ? "Yes" : "No", (p.images || []).length, p.desc || p.description || ""]);
     });
     if (typeof window.downloadCsv === "function") window.downloadCsv(`oban_inventory_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  });
+
+  // ------------------------------------------------------------------------
+  // Settings: sign-in code status and email test (admins)
+  // ------------------------------------------------------------------------
+  async function authCall(method, body) {
+    const token = localStorage.getItem("oban-admin-token") || "";
+    const res = await fetch("/api/auth", {
+      method,
+      cache: "no-store",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Request failed (" + res.status + ")");
+    return data;
+  }
+
+  async function renderSecurity() {
+    const card = $("#securityCard");
+    if (!card) return;
+    const user = window.obanStaffUser ? window.obanStaffUser() : {};
+    if (user.role !== "admin") { card.hidden = true; return; }
+    card.hidden = false;
+    try {
+      const { security } = await authCall("GET");
+      if (!security) return;
+      const on = security.codes;
+      $("#codesDot").style.background = on ? "#5a6048" : "#d3ab69";
+      $("#codesStatus").textContent = on ? "On: a code is emailed at every sign-in" : "Off: password only";
+      $("#codesHint").textContent = !security.email
+        ? "Email sending is not set up yet. Add the SMTP settings in Vercel, then send a test email."
+        : on ? "Email sending is set up." : "Email sending is set up. Send a test email; if it arrives, delete LOGIN_OTP in Vercel to switch codes on.";
+    } catch (e) {
+      $("#codesStatus").textContent = "Could not check";
+    }
+  }
+
+  $("#btnTestEmail")?.addEventListener("click", async () => {
+    const msg = $("#testEmailMessage");
+    const btn = $("#btnTestEmail");
+    btn.disabled = true;
+    msg.style.color = "";
+    msg.textContent = "Sending…";
+    try {
+      const r = await authCall("POST", { action: "testEmail" });
+      msg.style.color = "#5a6048";
+      msg.textContent = "Sent to " + r.to + " via " + r.via + ". Check the inbox (and spam folder).";
+    } catch (e) {
+      msg.style.color = "#4a3324";
+      msg.textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   // ------------------------------------------------------------------------

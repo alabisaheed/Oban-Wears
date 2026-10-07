@@ -75,4 +75,26 @@ function sendLoginCode(to, code, minutes) {
   });
 }
 
-module.exports = { sendLoginCode, configured, outbox };
+// Settings → "Send test email": same path as sign-in codes, but reports the
+// mail server's own error so a wrong SMTP setting can be spotted.
+async function sendTest(to) {
+  const message = {
+    to,
+    subject: "Oban Wears dashboard email test",
+    text: "This is a test from the Oban Wears dashboard. If you can read it, sign-in codes can be emailed.\n\nOban Wears"
+  };
+  if (process.env.OBAN_TEST_MAIL) {
+    outbox.push(message);
+    return { via: "test" };
+  }
+  if (!configured()) throw new HttpError(503, "Email is not configured: add SMTP_HOST, SMTP_USER and SMTP_PASS (or RESEND_API_KEY) in Vercel.");
+  try {
+    if (process.env.RESEND_API_KEY) await sendViaResend(message);
+    else await sendViaSmtp(message);
+  } catch (err) {
+    throw new HttpError(502, `The mail server refused the message: ${String(err && err.message || err).slice(0, 300)}`);
+  }
+  return { via: process.env.RESEND_API_KEY ? "Resend" : `SMTP ${process.env.SMTP_HOST}` };
+}
+
+module.exports = { sendLoginCode, sendTest, configured, outbox };

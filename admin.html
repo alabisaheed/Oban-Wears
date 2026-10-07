@@ -42,8 +42,8 @@
   <meta name="description" content="Oban Wears Admin Dashboard Portal for staff tracking and updates.">
   <title>Dashboard | Oban Wears</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="admin-login.css?v=20261007d">
-  <link rel="stylesheet" href="admin-app.css?v=20261007d">
+  <link rel="stylesheet" href="admin-login.css?v=20261007e">
+  <link rel="stylesheet" href="admin-app.css?v=20261007e">
   <link rel="manifest" href="/dashboard.webmanifest">
   <meta name="theme-color" content="#080806">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -513,6 +513,13 @@
                   <div class="form-actions"><button type="submit" class="btn btn-dark"><svg class="ic"><use href="#i-key"/></svg><span>Update password</span></button></div>
                 </form>
               </div>
+              <div class="card" id="securityCard" hidden>
+                <div class="card-head"><h2>Sign-in codes</h2></div>
+                <div class="status-line"><span class="dot" id="codesDot"></span><strong id="codesStatus">Checking</strong></div>
+                <p class="hint" id="codesHint"></p>
+                <p class="hint" id="testEmailMessage"></p>
+                <div class="form-actions form-actions-start"><button type="button" class="btn btn-line" id="btnTestEmail"><svg class="ic"><use href="#i-mail"/></svg><span>Send test email to me</span></button></div>
+              </div>
               <div class="card" id="installCard" hidden>
                 <div class="card-head"><h2>Dashboard app</h2></div>
                 <p class="hint">Add the dashboard to your phone's home screen to open it like an app.</p>
@@ -706,8 +713,8 @@
   <div class="toast-stack" id="admToasts" aria-live="polite"></div>
 
   <script src="print-utility.js"></script>
-  <script src="admin-sync.js?v=20261007d"></script>
-  <script src="admin.js?v=20261007d"></script>
-  <script src="admin-ui.js?v=20261007d"></script>
+  <script src="admin-sync.js?v=20261007e"></script>
+  <script src="admin.js?v=20261007e"></script>
+  <script src="admin-ui.js?v=20261007e"></script>
 </body>
 </html>
