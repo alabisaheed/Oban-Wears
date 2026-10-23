@@ -274,7 +274,7 @@ footer.lp-footer {
   text-align: center;
 }
 
-.lp-ribbon {
+.lp .lp-ribbon {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -299,7 +299,7 @@ footer.lp-footer {
   margin: 0 auto;
 }
 
-.lp-hero-sub {
+.lp .lp-hero-sub {
   max-width: 860px;
   margin: 30px auto 0;
   font-family: "Manrope", sans-serif;
@@ -309,7 +309,7 @@ footer.lp-footer {
   letter-spacing: -0.01em;
 }
 
-.lp-hero-sub + .lp-hero-sub {
+.lp .lp-hero-sub + .lp-hero-sub {
   margin-top: 14px;
   color: var(--brown);
 }
@@ -1179,7 +1179,7 @@ footer.lp-footer {
   font-size: clamp(36px, 5.4vw, 70px);
 }
 
-.lp-offer-line {
+.lp .lp-offer-line {
   max-width: 900px;
   margin: 26px auto 0;
   padding: 22px 26px;
