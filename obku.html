@@ -43,7 +43,7 @@
   <meta name="description" content="Upgrade your Grand Opening order to all three kaftans plus an extra kaftan, two caps and cufflinks.">
   <meta name="robots" content="noindex">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="landing.css?v=2">
+  <link rel="stylesheet" href="landing.css?v=3">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/oban-favicon.png">
 </head>
@@ -65,46 +65,9 @@
     <symbol id="lp-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
   </svg>
 
-  <header class="site-header">
-    <button class="icon-button menu-button" id="menuButton"><span></span><span></span></button>
-    <a class="brand-link header-brand" href="index.html"><img src="assets/oban-wordmark-gold.png" alt="Oban Wears"></a>
-    <nav class="desktop-nav">
-      <a href="index.html">Home</a>
-      <a href="about.html">About</a>
-      <div class="nav-dropdown">
-        <a href="shop.html">Shop</a>
-        <div class="dropdown-menu">
-          <a href="kaftans.html">Kaftans</a>
-          <a href="agbada.html">Agbada</a>
-          <a href="suits.html">Suits</a>
-          <a href="father-son.html">Father &amp; Son</a>
-        </div>
-      </div>
-      <a href="blog.html">Blog</a>
-      <a href="contact.html">Contact</a>
-      <a href="faq.html">FAQ</a>
-      <div class="nav-dropdown">
-        <a href="profile.html">My Profile</a>
-        <div class="dropdown-menu">
-          <a href="profile.html">My Profile</a>
-          <a href="tracker.html">Track Order</a>
-        </div>
-      </div>
-    </nav>
-    <div></div>
+  <header class="lp-header">
+    <img src="assets/oban-wordmark-gold.png" alt="Oban Wears" width="154" height="23">
   </header>
-
-  <nav class="mobile-nav" id="mobileNav">
-    <a href="index.html">Home</a>
-    <a href="shop.html">Shop</a>
-    <a href="about.html">About</a>
-    <a href="blog.html">Blog</a>
-    <a href="father-son.html">Father &amp; Son</a>
-    <a href="contact.html">Contact</a>
-    <a href="faq.html">FAQ</a>
-    <a href="tracker.html">Track Order</a>
-    <a href="profile.html">My Profile</a>
-  </nav>
 
   <main class="lp">
     <div class="lp-banner"><p><svg class="lp-icon"><use href="#lp-check"/></svg><span id="upsellBanner">Congratulations on ordering a classy Oban Wears kaftan.</span></p></div>
@@ -175,37 +138,7 @@
     </section>
   </main>
 
-  <footer>
-    <a class="brand-link footer-brand" href="index.html"><img src="assets/oban-logo-gold.png" alt="Oban Wears"></a>
-    <div>
-      <p>Shop</p>
-      <a href="kaftans.html">Kaftans</a>
-      <a href="agbada.html">Agbada</a>
-      <a href="suits.html">Suits</a>
-      <a href="father-son.html">Father &amp; Son</a>
-    </div>
-    <div>
-      <p>Help</p>
-      <a href="about.html">About us</a>
-      <a href="blog.html">Blog</a>
-      <a href="faq.html">FAQ</a>
-      <a href="contact.html">Contact</a>
-      <a href="tracker.html">Track Order</a>
-    </div>
-    <div>
-      <p>Contact</p>
-      <span>Opposite Technoil,<br>Olowola Bus Stop, Igando,<br>Lagos State</span>
-      <a href="tel:+2348168003732">+234 816 800 3732</a>
-      <a href="mailto:obanwears@gmail.com">obanwears@gmail.com</a>
-    </div>
-    <div>
-      <p>Follow</p>
-      <a href="https://web.facebook.com/obanwears/" target="_blank" rel="noopener">Facebook</a>
-      <a href="https://www.instagram.com/obanwears/" target="_blank" rel="noopener">Instagram</a>
-      <a href="https://x.com/ObanWears" target="_blank" rel="noopener">X</a>
-    </div>
-    <small>&copy; 2026 Oban Wears. Lagos, Nigeria.</small>
-  </footer>
+  <footer class="lp-footer" aria-hidden="true"></footer>
 
   <script src="simple-pages.js"></script>
   <script src="landing.js?v=2"></script>

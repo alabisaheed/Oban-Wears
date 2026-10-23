@@ -1086,3 +1086,44 @@
     gap: 8px;
   }
 }
+
+/* Landing pages: logo-only header and a plain black footer band */
+.lp-header {
+  height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(211, 171, 105, 0.3);
+  background: rgba(244, 240, 232, 0.94);
+}
+
+.lp-header img {
+  display: block;
+  width: 154px;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+footer.lp-footer {
+  display: block;
+  min-height: 140px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: var(--ink, #080806);
+}
+
+@media (max-width: 650px) {
+  .lp-header {
+    height: 64px;
+  }
+
+  .lp-header img {
+    width: 132px;
+  }
+
+  footer.lp-footer {
+    min-height: 100px;
+  }
+}
