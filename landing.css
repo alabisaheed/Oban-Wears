@@ -1127,3 +1127,79 @@ footer.lp-footer {
     min-height: 100px;
   }
 }
+
+/* All-white backgrounds (header, every section, thank-you hero).
+   Cards keep thin borders and the gold top rule so they still stand out. */
+body:has(.lp) {
+  background: #fff;
+}
+
+.lp,
+.lp-header,
+.lp-hero,
+.lp-thanks,
+.lp-section,
+.lp-section-cream,
+.lp-section-dark,
+.lp-urgent,
+.lp-banner {
+  background: #fff;
+}
+
+.lp-header {
+  border-bottom-color: var(--line, rgba(21, 21, 18, 0.14));
+}
+
+.lp-section-dark {
+  color: var(--ink, #080806);
+}
+
+.lp-section-dark .lp-lead,
+.lp-section-dark p {
+  color: #66615a;
+}
+
+.lp-section-dark .eyebrow {
+  color: inherit;
+}
+
+.lp-urgent {
+  border-top: 1px solid rgba(21, 21, 18, 0.14);
+  border-bottom: 1px solid rgba(21, 21, 18, 0.14);
+}
+
+.lp-urgent p {
+  color: #66615a;
+}
+
+.lp-banner {
+  color: var(--ink, #080806);
+  border-bottom: 1px solid rgba(21, 21, 18, 0.14);
+}
+
+.lp-receipt,
+.lp-choice span,
+.lp-option figure,
+.lp-ref {
+  background: #fff;
+}
+
+.lp-receipt {
+  border: 1px solid rgba(21, 21, 18, 0.14);
+  border-top: 4px solid var(--gold, #d3ab69);
+}
+
+.lp-ref {
+  border: 1px solid rgba(21, 21, 18, 0.14);
+}
+
+.lp-section-dark .lp-btn-gold,
+.lp-urgent .lp-btn {
+  background: var(--ink, #080806);
+  color: #fff;
+}
+
+.lp-section-dark .lp-btn-gold:hover,
+.lp-urgent .lp-btn:hover {
+  background: var(--brown, #4a3324);
+}
