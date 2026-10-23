@@ -27,16 +27,73 @@
     if (message) el.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 
+  // Keeps the button label and adds a spinner while a form is sending.
+  function busy(button, on) {
+    button.disabled = on;
+    const spin = button.querySelector(".lp-spin");
+    if (on && !spin) button.insertAdjacentHTML("beforeend", '<span class="lp-spin" aria-hidden="true"></span>');
+    if (!on && spin) spin.remove();
+  }
+
+  // ---- Reveal sections as they scroll into view ---------------------------
+  const reveals = document.querySelectorAll(".lp-reveal");
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-in");
+        io.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    reveals.forEach((el) => io.observe(el));
+  } else {
+    reveals.forEach((el) => el.classList.add("is-in"));
+  }
+
+  // Smooth scroll for the in-page "#order" buttons.
+  document.querySelectorAll('a[href="#order"]').forEach((a) => {
+    a.addEventListener("click", (e) => {
+      const target = $("#order");
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
   // ---- /obpk: order form ------------------------------------------------
   const orderForm = $("#landingOrderForm");
   if (orderForm) {
-    // "Choose ..." buttons on the option cards preselect that kaftan.
+    // Clicking an option card selects that kaftan and goes to the form.
     document.querySelectorAll("[data-pick]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const radio = orderForm.querySelector(`input[name="kaftan"][value="${btn.dataset.pick}"]`);
         if (radio) radio.checked = true;
+        $("#order").scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
+
+    // Sticky deal bar: shown after the hero button, hidden while the form is on screen.
+    const sticky = $("#lpSticky");
+    const hero = $("#heroCta");
+    const order = $("#order");
+    if (sticky && hero && order && "IntersectionObserver" in window) {
+      let pastHero = false;
+      let atForm = false;
+      const update = () => {
+        const on = pastHero && !atForm;
+        sticky.classList.toggle("is-on", on);
+        sticky.setAttribute("aria-hidden", on ? "false" : "true");
+        sticky.querySelector("a").tabIndex = on ? 0 : -1;
+      };
+      new IntersectionObserver(([entry]) => {
+        pastHero = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+        update();
+      }).observe(hero);
+      new IntersectionObserver(([entry]) => {
+        atForm = entry.isIntersecting;
+        update();
+      }, { threshold: 0.05 }).observe(order);
+    }
 
     orderForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -53,17 +110,14 @@
       if (!kaftan) return showError(error, "Please choose your kaftan.");
       showError(error, "");
 
-      button.disabled = true;
-      const label = button.textContent;
-      button.textContent = "Placing your order…";
+      busy(button, true);
       try {
         const result = await post(data);
         save({ ref: result.ref, kaftan, name: data.name, email: data.email, whatsapp: data.whatsapp });
         window.location.href = `obku${result.ref ? `?ref=${encodeURIComponent(result.ref)}` : ""}`;
       } catch (err) {
         showError(error, err.message);
-        button.disabled = false;
-        button.textContent = label;
+        busy(button, false);
       }
     });
   }
@@ -74,13 +128,11 @@
     const state = load();
     const ref = new URLSearchParams(location.search).get("ref") || state.ref || "";
     if (ref) save({ ref });
-    if (state.name && $("#upsellBanner")) {
-      $("#upsellBanner").textContent = `Congratulations ${state.name.split(" ")[0]}, your ${state.kaftan || "kaftan"} order is in (ref ${ref}).`;
-    }
     if (state.email) upgradeForm.elements.email.value = state.email;
 
     const openForm = () => {
       upgradeForm.hidden = false;
+      upgradeForm.classList.add("is-in");
       upgradeForm.scrollIntoView({ block: "center", behavior: "smooth" });
       setTimeout(() => upgradeForm.elements.email.focus({ preventScroll: true }), 400);
     };
@@ -95,17 +147,14 @@
       const email = upgradeForm.elements.email.value.trim();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError(error, "Please enter a valid email address.");
       showError(error, "");
-      button.disabled = true;
-      const label = button.textContent;
-      button.textContent = "Upgrading your order…";
+      busy(button, true);
       try {
         const result = await post({ type: "upgrade", email, ref, website: upgradeForm.elements.website.value });
         save({ ref: result.ref || ref, email, upgraded: true });
         window.location.href = "obtu?upgraded=1";
       } catch (err) {
         showError(error, err.message);
-        button.disabled = false;
-        button.textContent = label;
+        busy(button, false);
       }
     });
   }
@@ -114,11 +163,6 @@
   if ($("#thanksWhatsApp")) {
     const state = load();
     const upgraded = new URLSearchParams(location.search).get("upgraded") === "1" || state.upgraded === true;
-    if (upgraded && $("#thanksEyebrow")) $("#thanksEyebrow").textContent = "Klassy Man Bundle upgrade received";
-    if (state.ref) {
-      $("#thanksRef").hidden = false;
-      $("#thanksRefValue").textContent = state.ref;
-    }
     const message = [
       "Hello Oban Wears, I just placed the Grand Opening Deal order",
       state.ref ? ` (ref ${state.ref})` : "",
@@ -127,14 +171,5 @@
       "."
     ].join("");
     $("#thanksWhatsApp").href = `https://wa.me/2348168003732?text=${encodeURIComponent(message)}`;
-
-    $("#shareBtn")?.addEventListener("click", async () => {
-      const url = $("#shareLink").value;
-      const text = "Oban Wears Grand Opening Deal: premium kaftan + free cap + free corporate shirt for N95,000.";
-      if (navigator.share) {
-        try { await navigator.share({ title: "Oban Wears Grand Opening Deal", text, url }); return; } catch (e) { /* cancelled */ }
-      }
-      try { await navigator.clipboard.writeText(url); $("#shareBtn").lastChild.textContent = "Link copied"; } catch (e) { $("#shareLink").select(); }
-    });
   }
 })();
