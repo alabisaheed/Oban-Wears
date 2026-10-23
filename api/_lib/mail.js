@@ -156,4 +156,39 @@ async function sendStaffInvite({ to, role, invitedBy }) {
   }
 }
 
-module.exports = { sendLoginCode, sendTest, sendEnquiryNotice, sendStaffInvite, configured, outbox };
+// Grand Opening landing page: new order (/obpk) or upgrade request (/obku).
+async function sendLandingNotice(kind, order) {
+  const to = (process.env.ENQUIRY_EMAIL || String(process.env.ADMIN_EMAILS || "").split(",")[0] || "").trim();
+  if (!to) return false;
+  const upgrade = kind === "upgrade";
+  try {
+    await send({
+      to,
+      replyTo: order.email || undefined,
+      subject: upgrade
+        ? `Upgrade requested: ${order.name || order.email} (${order.ref})`
+        : `New Grand Opening order: ${order.name} - ${order.kaftan} (${order.ref})`,
+      text: [
+        upgrade
+          ? `${order.name || "A customer"} asked to upgrade to the Klassy Man Bundle (all 3 kaftans + extra kaftan, 2 caps and cufflinks, N230,000 more; N325,000 in total).`
+          : `${order.name} placed a Grand Opening Deal order from obanwears.com/obpk.`,
+        "",
+        `Reference: ${order.ref}`,
+        `Kaftan: ${order.kaftan || "-"}`,
+        `Name: ${order.name || "-"}`,
+        `WhatsApp: ${order.whatsapp || "-"}`,
+        `Email: ${order.email || "-"}`,
+        `Delivery address: ${order.address || "-"}`,
+        `Total so far: N${Number(order.total || 0).toLocaleString("en-NG")}`,
+        "",
+        "Open Grand Opening in the dashboard to follow up."
+      ].join("\n")
+    });
+    return true;
+  } catch (err) {
+    console.error("Landing notice failed:", err);
+    return false;
+  }
+}
+
+module.exports = { sendLoginCode, sendTest, sendEnquiryNotice, sendStaffInvite, sendLandingNotice, configured, outbox };

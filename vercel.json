@@ -67,18 +67,6 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/obpk",
-      "destination": "https://mail.obanwears.com/obpk/"
-    },
-    {
-      "source": "/obku",
-      "destination": "https://mail.obanwears.com/obku/"
-    },
-    {
-      "source": "/obtu",
-      "destination": "https://mail.obanwears.com/obtu/"
-    },
-    {
       "source": "/wp-content/:path*",
       "destination": "https://mail.obanwears.com/wp-content/:path*"
     },

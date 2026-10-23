@@ -24,6 +24,7 @@ const COLLECTIONS = {
   comments: ALL,
   subscribers: ALL,
   enquiries: ALL,
+  landingOrders: ALL,
   profiles: ALL,
   vendors: ["admin", "manager"],
   purchaseOrders: ["admin", "manager"],
@@ -34,7 +35,8 @@ const COLLECTIONS = {
 const CAN_DELETE = {
   orders: ["admin", "manager"],
   products: ["admin", "manager"],
-  profiles: ["admin", "manager"]
+  profiles: ["admin", "manager"],
+  landingOrders: ["admin", "manager"]
 };
 const MAX_RECORDS_PER_WRITE = 300;
 const SECRET_FIELDS = ["passwordHash", "pinHash", "pin"];

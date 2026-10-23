@@ -52,13 +52,13 @@
   // Sections
   // ------------------------------------------------------------------------
   const TITLES = {
-    overview: "Dashboard", orders: "Orders", customers: "Customers", enquiries: "Messages", comments: "Comments", inventory: "Inventory",
+    overview: "Dashboard", orders: "Orders", customers: "Customers", landing: "Grand Opening", enquiries: "Messages", comments: "Comments", inventory: "Inventory",
     purchases: "Purchases", blog: "Blog", subscribers: "Subscribers", staff: "Staff", database: "Settings"
   };
   const RENDER_ON_OPEN = {
     overview: ["renderDashboard"], orders: ["renderDashboard"], customers: ["renderCustomers"], inventory: ["renderInventory"],
     purchases: ["renderPurchases"], blog: ["renderBlogFeed"], subscribers: ["renderSubscribers"], staff: ["renderStaff"],
-    enquiries: ["renderEnquiries"], comments: ["renderBlogComments"]
+    enquiries: ["renderEnquiries"], comments: ["renderBlogComments"], landing: ["renderLandingOrders"]
   };
   const panelId = (name) => "tab" + name.charAt(0).toUpperCase() + name.slice(1);
 
@@ -241,6 +241,7 @@
     const pendingComments = read("oban-comments", []).filter((c) => c.approved !== true).length;
     const glance = [
       ["money", naira(owed), "awaiting payment"],
+      ["sparkle", read("oban-landing-orders", []).length, "Grand Opening orders"],
       ["message", newMessages, `new message${newMessages === 1 ? "" : "s"} from the contact form`],
       ["comment", pendingComments, `comment${pendingComments === 1 ? "" : "s"} awaiting approval`],
       ["customers", customers, `customer${customers === 1 ? "" : "s"}`],
@@ -257,6 +258,9 @@
     if (navOrders) navOrders.textContent = orders.filter((o) => Number(o.currentStage) === 1).length || "";
     const navInv = $("#navCountInventory");
     if (navInv) navInv.textContent = products.length || "";
+    const landingNew = read("oban-landing-orders", []).filter((o) => ["New", "Upgrade requested"].includes(o.status || "New")).length;
+    const navLanding = $("#navCountLanding");
+    if (navLanding) navLanding.textContent = landingNew || "";
     const navMsg = $("#navCountEnquiries");
     if (navMsg) navMsg.textContent = newMessages || "";
     const navCom = $("#navCountComments");
@@ -389,6 +393,119 @@
     });
     renderOverview();
   };
+
+  // ------------------------------------------------------------------------
+  // Grand Opening Deal (landing pages /obpk and /obku)
+  // ------------------------------------------------------------------------
+  const LANDING_STATUSES = ["New", "Upgrade requested", "Contacted", "Paid", "Cancelled"];
+  const LANDING_TONE = { New: "st-1", "Upgrade requested": "badge-gold", Contacted: "", Paid: "badge-ok", Cancelled: "badge-off" };
+
+  function updateLanding(ref, changes) {
+    const list = read("oban-landing-orders", []);
+    const item = list.find((o) => o.ref === ref);
+    if (!item) return;
+    Object.assign(item, changes);
+    saveList("oban-landing-orders", list);
+    window.renderLandingOrders();
+  }
+
+  function waLink(o) {
+    const digits = String(o.whatsapp || "").replace(/\D/g, "").replace(/^0/, "234");
+    const text = `Hello ${String(o.name || "").split(" ")[0] || "there"}, this is Oban Wears about your Grand Opening order ${o.ref}${o.kaftan ? ` (${o.kaftan})` : ""}${o.upgrade ? " and your Klassy Man Bundle upgrade" : ""}.`;
+    return digits ? `https://wa.me/${digits}?text=${encodeURIComponent(text)}` : "";
+  }
+
+  window.renderLandingOrders = function () {
+    const body = $("#landingTableBody");
+    if (!body) return;
+    const all = read("oban-landing-orders", []).sort(newestFirst);
+    const count = (fn) => all.filter(fn).length;
+    const strip = $("#landingStats");
+    if (strip) {
+      strip.innerHTML = [
+        ["Orders", all.length],
+        ["New", count((o) => (o.status || "New") === "New")],
+        ["Upgrades", count((o) => o.upgrade)],
+        ["Navy Blue", count((o) => o.kaftan === "Navy Blue Premium")],
+        ["Beige", count((o) => o.kaftan === "Classy Beige")],
+        ["Green", count((o) => o.kaftan === "Cool Green")]
+      ].map(([label, n]) => `<div class="stat"><span>${esc(label)}</span><strong>${n}</strong></div>`).join("");
+    }
+    const q = ($("#landingSearchInput")?.value || "").trim().toLowerCase();
+    const status = $("#landingStatusFilter")?.value || "";
+    const list = all.filter((o) => (!status || (o.status || "New") === status) &&
+      (!q || `${o.ref} ${o.name} ${o.whatsapp} ${o.email} ${o.kaftan}`.toLowerCase().includes(q)));
+
+    if (!list.length) {
+      body.innerHTML = `<tr><td colspan="8" class="empty">${all.length ? "No orders match these filters." : "No Grand Opening orders yet. Orders from obanwears.com/obpk appear here."}</td></tr>`;
+      renderOverview();
+      return;
+    }
+    const inOrders = new Set(read("oban-orders", []).map((o) => o.ref));
+    body.innerHTML = list.map((o) => {
+      const st = o.status || "New";
+      const wa = waLink(o);
+      const options = LANDING_STATUSES.map((s) => `<option ${s === st ? "selected" : ""}>${s}</option>`).join("");
+      return `
+        <tr>
+          <td><span class="ref">${esc(o.ref)}</span><span class="cell-sub">${esc(o.date)}</span></td>
+          <td><span class="cell-main">${esc(o.name || "(name not given)")}</span><span class="cell-sub">${esc(o.whatsapp || "")}</span><span class="cell-sub">${esc(o.email || o.upgradeEmail || "")}</span></td>
+          <td>${esc(o.kaftan || "-")}</td>
+          <td><div class="msg-text">${esc(o.address || "-")}</div></td>
+          <td class="num"><strong>${naira(o.total)}</strong></td>
+          <td>${o.upgrade ? `<span class="badge badge-gold">Requested</span><span class="cell-sub">${esc(o.upgradeEmail || "")}</span>` : `<span class="badge badge-off">No</span>`}</td>
+          <td><select class="sel-sm landing-status" data-ref="${esc(o.ref)}" aria-label="Status for ${esc(o.ref)}" style="min-width:150px">${options}</select>
+            <span class="badge ${LANDING_TONE[st] || ""}" style="margin-top:6px">${esc(st)}</span></td>
+          <td><div class="acts">
+            ${wa ? `<a class="act act-text" href="${wa}" target="_blank" rel="noopener" title="Chat on WhatsApp">${icon("whatsapp")}Chat</a>` : ""}
+            ${inOrders.has(o.ref)
+              ? `<span class="badge badge-ok">In Orders</span>`
+              : `<button type="button" class="act act-text landing-to-order" data-ref="${esc(o.ref)}" title="Add to the Orders pipeline">${icon("plus")}Add to Orders</button>`}
+            ${canDelete() ? `<button type="button" class="act act-danger landing-delete" data-ref="${esc(o.ref)}" title="Delete" aria-label="Delete ${esc(o.ref)}">${icon("trash")}</button>` : ""}
+          </div></td>
+        </tr>`;
+    }).join("");
+
+    $$(".landing-status", body).forEach((sel) => {
+      sel.onchange = () => updateLanding(sel.dataset.ref, { status: sel.value });
+    });
+    $$(".landing-to-order", body).forEach((b) => {
+      b.onclick = () => {
+        const o = all.find((x) => x.ref === b.dataset.ref);
+        if (!o) return;
+        const orders = read("oban-orders", []);
+        if (orders.some((x) => x.ref === o.ref)) return;
+        const piece = o.upgrade
+          ? `Klassy Man Bundle: 4 kaftans (incl. ${o.kaftan || "first choice"}), 3 caps, corporate shirt, cufflinks`
+          : `Grand Opening Deal: ${o.kaftan} kaftan + matching cap + corporate shirt`;
+        orders.unshift({
+          ref: o.ref, name: o.name, email: o.email || o.upgradeEmail || "", whatsapp: o.whatsapp,
+          piece, total: Number(o.total) || 0, currentStage: o.status === "Paid" ? 2 : 1,
+          date: o.date, createdAt: o.createdAt, orderType: "Grand Opening Deal",
+          notes: `Location: ${o.address || "not given"}`
+        });
+        saveList("oban-orders", orders);
+        updateLanding(o.ref, { addedToOrdersAt: new Date().toISOString(), status: o.status === "New" ? "Contacted" : o.status });
+        toast(`${o.ref} added to Orders.`);
+      };
+    });
+    $$(".landing-delete", body).forEach((b) => {
+      b.onclick = () => {
+        if (!confirm(`Delete Grand Opening order ${b.dataset.ref}? This cannot be undone.`)) return;
+        saveList("oban-landing-orders", read("oban-landing-orders", []).filter((o) => o.ref !== b.dataset.ref));
+        window.renderLandingOrders();
+      };
+    });
+    renderOverview();
+  };
+
+  $("#landingSearchInput")?.addEventListener("input", () => window.renderLandingOrders());
+  $("#landingStatusFilter")?.addEventListener("change", () => window.renderLandingOrders());
+  $("#exportLandingBtn")?.addEventListener("click", () => {
+    const rows = [["Reference", "Date", "Name", "WhatsApp", "Email", "Kaftan", "Delivery address", "Total", "Upgrade", "Upgrade email", "Status"]];
+    read("oban-landing-orders", []).sort(newestFirst).forEach((o) => rows.push([o.ref, o.date, o.name, o.whatsapp, o.email, o.kaftan, o.address, o.total, o.upgrade ? "Yes" : "No", o.upgradeEmail || "", o.status || "New"]));
+    if (typeof window.downloadCsv === "function") window.downloadCsv(`oban_grand_opening_${new Date().toISOString().slice(0, 10)}.csv`, rows);
+  });
 
   $("#enquirySearchInput")?.addEventListener("input", () => window.renderEnquiries());
   $("#enquiryStatusFilter")?.addEventListener("change", () => window.renderEnquiries());

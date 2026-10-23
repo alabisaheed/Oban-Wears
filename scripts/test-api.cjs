@@ -242,6 +242,23 @@ server.listen(0, async () => {
     const shown = (await call("/api/content?type=comments&article=why-kaftan")).body;
     check("approved comment and reply shown", shown.length === 1 && shown[0].replies[0].text === "Thank you" && shown[0].email === undefined, shown);
 
+    // ---- Grand Opening landing pages
+    const mails = mail.outbox.length;
+    const lpBad = await call("/api/landing", { method: "POST", body: { type: "order", name: "Ola", whatsapp: "08012345678", address: "Ikeja", kaftan: "Purple" } });
+    check("landing order needs a valid kaftan", lpBad.status === 400, lpBad.body);
+    const lp = await call("/api/landing", { method: "POST", body: { type: "order", name: "Ola Bisi", whatsapp: "08012345678", email: "ola@example.com", address: "12 Allen Avenue, Ikeja", kaftan: "classy beige" } });
+    check("landing order saved with a reference", lp.status === 201 && /^GO\d{4}[A-Z]$/.test(lp.body.ref) && lp.body.kaftan === "Classy Beige", lp.body);
+    check("landing order emailed to the shop", mail.outbox.length === mails + 1 && /Grand Opening order/.test(mail.outbox[mails].subject) && mail.outbox[mails].replyTo === "ola@example.com", mail.outbox[mails]);
+    let lpRows = (await call("/api/admin?c=landingOrders", { token: admin })).body.changes.landingOrders.upsert;
+    check("landing order in the dashboard", lpRows[lp.body.ref] && lpRows[lp.body.ref].total === 95000 && lpRows[lp.body.ref].status === "New", lpRows);
+    await new Promise((r) => setTimeout(r, 10100)); // per-connection spacing
+    const up = await call("/api/landing", { method: "POST", body: { type: "upgrade", email: "ola@example.com", ref: lp.body.ref } });
+    check("upgrade attached to the same order", up.status === 201 && up.body.ref === lp.body.ref, up.body);
+    lpRows = (await call("/api/admin?c=landingOrders", { token: admin })).body.changes.landingOrders.upsert;
+    const upgraded = lpRows[lp.body.ref];
+    check("upgrade marked with new total", upgraded.upgrade === true && upgraded.total === 325000 && upgraded.status === "Upgrade requested", upgraded);
+    check("upgrade emailed to the shop", /Upgrade requested/.test(mail.outbox[mail.outbox.length - 1].subject));
+
     // ---- Codes can be switched off in an emergency
     process.env.LOGIN_OTP = "off";
     const direct = await call("/api/auth", { method: "POST", body: { action: "login", email: "tailor@oban.test", password: "new-tailor-password" } });

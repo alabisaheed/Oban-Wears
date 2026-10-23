@@ -42,8 +42,8 @@
   <meta name="description" content="Oban Wears Admin Dashboard Portal for staff tracking and updates.">
   <title>Dashboard | Oban Wears</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="admin-login.css?v=20261007g">
-  <link rel="stylesheet" href="admin-app.css?v=20261007g">
+  <link rel="stylesheet" href="admin-login.css?v=20261023a">
+  <link rel="stylesheet" href="admin-app.css?v=20261023a">
   <link rel="manifest" href="/dashboard.webmanifest">
   <meta name="theme-color" content="#080806">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -98,6 +98,8 @@
       <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"/><path d="M8 9h8M8 13h5"/></symbol>
       <symbol id="i-comment" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
       <symbol id="i-reply" viewBox="0 0 24 24"><path d="m9 17-5-5 5-5"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></symbol>
+      <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/></symbol>
+      <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-12.6 7.4L3 21l1.6-5.2A8.5 8.5 0 1 1 21 12Z"/><path d="M9 9.5c.5 2 2.5 4 4.5 4.5l1-1 2 1c-.5 1.5-1.5 2-3 1.5-2.5-1-4.5-3-5.5-5.5-.5-1.5 0-2.5 1.5-3l1 2Z"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
       <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/></symbol>
     </defs>
@@ -212,6 +214,7 @@
           <p class="adm-nav-label">Sales</p>
           <button class="admin-tab" data-tab="orders" id="tabBtnOrders"><svg class="ic"><use href="#i-orders"/></svg><span>Orders</span><em class="adm-nav-count" id="navCountOrders"></em></button>
           <button class="admin-tab" data-tab="customers" id="tabBtnCustomers"><svg class="ic"><use href="#i-customers"/></svg><span>Customers</span></button>
+          <button class="admin-tab" data-tab="landing" id="tabBtnLanding"><svg class="ic"><use href="#i-sparkle"/></svg><span>Grand Opening</span><em class="adm-nav-count" id="navCountLanding"></em></button>
           <button class="admin-tab" data-tab="enquiries" id="tabBtnEnquiries"><svg class="ic"><use href="#i-message"/></svg><span>Messages</span><em class="adm-nav-count" id="navCountEnquiries"></em></button>
           <p class="adm-nav-label">Stock</p>
           <button class="admin-tab" data-tab="inventory" id="tabBtnInventory"><svg class="ic"><use href="#i-inventory"/></svg><span>Inventory</span><em class="adm-nav-count" id="navCountInventory"></em></button>
@@ -345,6 +348,33 @@
                 </table>
               </div>
             </div>
+          </section>
+
+          <!-- Grand Opening Deal landing pages (/obpk, /obku) -->
+          <section id="tabLanding" class="adm-panel" hidden>
+            <div class="stat-strip" id="landingStats"></div>
+            <div class="toolbar">
+              <label class="search"><svg class="ic"><use href="#i-search"/></svg><input type="search" id="landingSearchInput" placeholder="Search name, phone, email or reference"></label>
+              <label class="adm-select-wrap"><svg class="ic"><use href="#i-tag"/></svg>
+                <select id="landingStatusFilter" aria-label="Filter by status">
+                  <option value="">All statuses</option>
+                  <option value="New">New</option>
+                  <option value="Upgrade requested">Upgrade requested</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </label>
+              <div class="toolbar-end">
+                <a class="btn btn-line" href="/obpk" target="_blank" rel="noopener"><svg class="ic"><use href="#i-external"/></svg><span>Open landing page</span></a>
+                <button type="button" class="btn btn-line" id="exportLandingBtn"><svg class="ic"><use href="#i-download"/></svg><span>Export</span></button>
+              </div>
+            </div>
+            <p class="hint">Orders from <strong>obanwears.com/obpk</strong> (&#8358;95,000 deal) and upgrade requests from <strong>/obku</strong> (Klassy Man Bundle, &#8358;325,000 in total). Each one is also emailed to the shop.</p>
+            <div class="card card-flush"><div class="table-scroll"><table class="tbl">
+              <thead><tr><th>Order</th><th>Customer</th><th>Kaftan</th><th>Delivery address</th><th class="num">Total</th><th>Upgrade</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="landingTableBody"></tbody>
+            </table></div></div>
           </section>
 
           <!-- Messages from the contact form -->
@@ -756,8 +786,8 @@
   <div class="toast-stack" id="admToasts" aria-live="polite"></div>
 
   <script src="print-utility.js"></script>
-  <script src="admin-sync.js?v=20261007g"></script>
-  <script src="admin.js?v=20261007g"></script>
-  <script src="admin-ui.js?v=20261007g"></script>
+  <script src="admin-sync.js?v=20261023a"></script>
+  <script src="admin.js?v=20261023a"></script>
+  <script src="admin-ui.js?v=20261023a"></script>
 </body>
 </html>
