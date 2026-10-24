@@ -35,6 +35,14 @@
     if (!on && spin) spin.remove();
   }
 
+  // Meta Pixel conversion events. The redirect waits briefly so the event is sent.
+  function track(event, params, eventID, custom) {
+    try {
+      if (typeof window.fbq === "function") window.fbq(custom ? "trackCustom" : "track", event, params, eventID ? { eventID } : undefined);
+    } catch (e) {}
+  }
+  const go = (url) => setTimeout(() => { window.location.href = url; }, 400);
+
   // ---- Reveal sections as they scroll into view ---------------------------
   const reveals = document.querySelectorAll(".lp-reveal");
   if ("IntersectionObserver" in window) {
@@ -114,7 +122,8 @@
       try {
         const result = await post(data);
         save({ ref: result.ref, kaftan, name: data.name, email: data.email, whatsapp: data.whatsapp });
-        window.location.href = `obku${result.ref ? `?ref=${encodeURIComponent(result.ref)}` : ""}`;
+        track("Lead", { content_name: "Grand Opening Deal", content_category: kaftan, value: 95000, currency: "NGN" }, result.ref);
+        go(`obku${result.ref ? `?ref=${encodeURIComponent(result.ref)}` : ""}`);
       } catch (err) {
         showError(error, err.message);
         busy(button, false);
@@ -151,7 +160,8 @@
       try {
         const result = await post({ type: "upgrade", email, ref, website: upgradeForm.elements.website.value });
         save({ ref: result.ref || ref, email, upgraded: true });
-        window.location.href = "obtu?upgraded=1";
+        track("Upgrade", { content_name: "Klassy Man Bundle upgrade", value: 230000, currency: "NGN" }, result.ref ? `${result.ref}-upgrade` : "", true);
+        go("obtu?upgraded=1");
       } catch (err) {
         showError(error, err.message);
         busy(button, false);
