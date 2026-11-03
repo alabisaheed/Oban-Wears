@@ -2,7 +2,6 @@
   "version": 2,
   "name": "oban-wears",
   "cleanUrls": true,
-  "trailingSlash": false,
   "headers": [
     {
       "source": "/api/(.*)",
@@ -63,10 +62,31 @@
       "permanent": false
     },
     {
+      "source": "/wp-admin/",
+      "missing": [{ "type": "cookie", "key": "wordpress_logged_in_ed68fc71152360caf7b38abc0bb7387b" }],
+      "destination": "/wp-login.php",
+      "permanent": false
+    },
+    {
       "source": "/wp-admin/index.php",
       "missing": [{ "type": "cookie", "key": "wordpress_logged_in_ed68fc71152360caf7b38abc0bb7387b" }],
       "destination": "/wp-login.php",
       "permanent": false
+    },
+    {
+      "source": "/wp-admin",
+      "destination": "/wp-admin/",
+      "permanent": false
+    },
+    {
+      "source": "/:file((?!wp-|index\\.php|xmlrpc\\.php)[a-z0-9-]+\\.php)",
+      "destination": "/wp-admin/:file",
+      "permanent": false
+    },
+    {
+      "source": "/:path((?!wp-admin|wp-json).*)/",
+      "destination": "/:path",
+      "permanent": true
     }
   ],
   "rewrites": [
