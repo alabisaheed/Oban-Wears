@@ -55,6 +55,18 @@
       "source": "/whm",
       "destination": "https://mail.obanwears.com:2087",
       "permanent": false
+    },
+    {
+      "source": "/wp-admin",
+      "missing": [{ "type": "cookie", "key": "wordpress_logged_in_ed68fc71152360caf7b38abc0bb7387b" }],
+      "destination": "/wp-login.php",
+      "permanent": false
+    },
+    {
+      "source": "/wp-admin/index.php",
+      "missing": [{ "type": "cookie", "key": "wordpress_logged_in_ed68fc71152360caf7b38abc0bb7387b" }],
+      "destination": "/wp-login.php",
+      "permanent": false
     }
   ],
   "rewrites": [
