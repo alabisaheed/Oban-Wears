@@ -75,7 +75,12 @@
     },
     {
       "source": "/wp-admin",
-      "destination": "/wp-admin/",
+      "destination": "/wp-admin/index.php",
+      "permanent": false
+    },
+    {
+      "source": "/wp-admin/",
+      "destination": "/wp-admin/index.php",
       "permanent": false
     },
     {
