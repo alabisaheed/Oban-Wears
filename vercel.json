@@ -89,6 +89,24 @@
       "permanent": false
     },
     {
+      "source": "/",
+      "has": [{ "type": "query", "key": "preview" }],
+      "destination": "/index.php",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "page_id" }],
+      "destination": "/index.php",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "query", "key": "p" }],
+      "destination": "/index.php",
+      "permanent": false
+    },
+    {
       "source": "/:path((?!wp-admin|wp-json).*)/",
       "destination": "/:path",
       "permanent": true
@@ -162,6 +180,14 @@
         }
       ],
       "destination": "/admin.html"
+    },
+    {
+      "source": "/:path([^.]*[^./])",
+      "destination": "https://mail.obanwears.com/:path/"
+    },
+    {
+      "source": "/:path*",
+      "destination": "https://mail.obanwears.com/:path*"
     }
   ]
 }
