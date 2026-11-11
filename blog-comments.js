@@ -290,17 +290,31 @@
   // Article database for dynamic sidebar list
   const allArticles = [
     {
+      id: "corporate-kaftan-power-dressing",
+      title: "The Corporate Kaftan Is the New Power Suit",
+      category: "Style Guides",
+      image: "assets/blog/corporate-kaftan-power-dressing.png",
+      excerpt: "Why Nigerian executives are trading suits for tailored kaftans, and how to wear one to win."
+    },
+    {
+      id: "bespoke-kaftan-lagos-guide",
+      title: "Bespoke Kaftan in Lagos: The No-Nonsense Guide",
+      category: "Fabrics & Craft",
+      image: "assets/blog/bespoke-kaftan-lagos-guide.png",
+      excerpt: "Measurements, fabrics, a fit checklist and the tailor red flags every man should know."
+    },
+    {
       id: "agbada-elegance",
       title: "The Timeless Elegance of Agbada",
       category: "Heritage & Culture",
-      image: "assets/products/Agbada/OB-AG01/01.jpg",
+      image: "assets/products/AGBADA COLLECTION/OB-AG01/23.jpg",
       excerpt: "Reimagining the majestic aura and cultural heritage of Agbada for the modern gentleman."
     },
     {
       id: "why-kaftan",
       title: "Why Every Man Needs a Kaftan",
       category: "Heritage & Culture",
-      image: "assets/products/kaftans/OB-KF01/01.webp",
+      image: "assets/products/KAFTAN COLLECTION/OB-KF01/2e4fa091-9a55-499d-aaad-66c90e652aeb.jpg",
       excerpt: "Discover the ultimate blend of tradition, comfort, and versatility in men's fashion."
     },
     {
@@ -314,14 +328,14 @@
       id: "modern-groom-agbada",
       title: "The Modern Groom: Wedding Agbada",
       category: "Style Guides",
-      image: "assets/products/Agbada/OB-AG07/01_nobg.png",
+      image: "assets/products/AGBADA COLLECTION/OB-AG02/1475af46-42d8-434a-9a91-abf10d6ca14a.jpg",
       excerpt: "A comprehensive style guide for the contemporary groom seeking clean, geometric embroidery."
     },
     {
       id: "fabric-selection-kaftans",
       title: "Fabric Selection: Linen & Cashmere",
       category: "Fabrics & Craft",
-      image: "assets/products/kaftans/OB-KF01/02.webp",
+      image: "assets/products/KAFTAN COLLECTION/OB-KF03/3fe6999b-4bea-4155-928e-6589c4a19927.jpg",
       excerpt: "How to select the perfect fabric for your kaftan based on climate, drape, and occasion."
     },
     {
@@ -335,42 +349,42 @@
       id: "father-son-matching",
       title: "Father & Son Matching Outfits",
       category: "Family",
-      image: "assets/products/Agbada/OB-AG03/01.jpg",
+      image: "assets/products/FATHER AND SONS/OB-FS01/IMG-20240913-WA0022.jpg",
       excerpt: "Celebrate family bonds and pass down cultural legacy with coordinated bespoke menswear."
     },
     {
       id: "art-of-bespoke-tailoring",
       title: "The Art of Bespoke Tailoring",
       category: "Fabrics & Craft",
-      image: "assets/products/Agbada/OB-AG15/01_nobg.png",
+      image: "assets/products/KAFTAN COLLECTION/OB-KF02/1b71c951-01b5-4c7f-a672-1b00d782aa30.jpg",
       excerpt: "What to expect during your first canvas fitting, measurements, and custom draft details."
     },
     {
       id: "corporate-kaftans-executive",
       title: "Corporate Kaftans: Office Wear",
       category: "Style Guides",
-      image: "assets/products/kaftans/OB-KF01/01.webp",
+      image: "assets/products/KAFTAN COLLECTION/OB-KF07/3706cdb3-c3f3-4472-9496-69f4f8916f60.jpg",
       excerpt: "Redefine the boardroom. How structured shoulders and clean lines replace corporate suits."
     },
     {
       id: "caring-velvet-brocade",
       title: "Caring for Velvet & Brocade",
       category: "Garment Care",
-      image: "assets/products/Agbada/OB-AG02/01.jpg",
+      image: "assets/products/AGBADA COLLECTION/OB-AG06/14baeca3-4bfc-4307-a5cd-c393bfbe1c61.jpg",
       excerpt: "Maintain the rich luster, texture, and storage life of royalty velvet and brocade garments."
     },
     {
       id: "accessorizing-traditional-wear",
       title: "Accessorizing Traditional Wear",
       category: "Style Guides",
-      image: "assets/products/campaign/campaign_new5_nobg.png",
+      image: "assets/products/SUITS AND PANTS/OB-SP02/IMG-20240526-WA0019.jpg",
       excerpt: "Master the art of selecting hand woven Fila caps, leather loafers, and classic watches."
     },
     {
       id: "suits-vs-kaftans",
       title: "Suits vs Kaftans: When to Wear What",
       category: "Style Guides",
-      image: "assets/products/suits/OB-ST01/01.jpg",
+      image: "assets/products/SUITS AND PANTS/OB-SP03/IMG-20240913-WA0018.jpg",
       excerpt: "Deciding between structured Western authority and traditional prestige for executive roles."
     }
   ];

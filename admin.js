@@ -2154,7 +2154,8 @@ function renderBlogFeed() {
     "accessorizing-traditional-wear.html", "agbada-elegance.html", "art-of-bespoke-tailoring.html",
     "caring-velvet-brocade.html", "choosing-right-outfit.html", "contemporary-menswear-global.html",
     "corporate-kaftans-executive.html", "fabric-selection-kaftans.html", "father-son-matching.html",
-    "modern-groom-agbada.html", "suits-vs-kaftans.html", "why-kaftan.html"
+    "modern-groom-agbada.html", "suits-vs-kaftans.html", "why-kaftan.html",
+    "corporate-kaftan-power-dressing.html", "bespoke-kaftan-lagos-guide.html"
   ]);
   articlesTableBody.querySelectorAll(".copy-art-link-btn").forEach(btn => {
     btn.onclick = (e) => {
