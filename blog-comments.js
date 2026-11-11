@@ -293,14 +293,14 @@
       id: "corporate-kaftan-power-dressing",
       title: "The Corporate Kaftan Is the New Power Suit",
       category: "Style Guides",
-      image: "assets/blog/corporate-kaftan-power-dressing.png",
+      image: "assets/blog/corporate-kaftan-power-dressing.jpg",
       excerpt: "Why Nigerian executives are trading suits for tailored kaftans, and how to wear one to win."
     },
     {
       id: "bespoke-kaftan-lagos-guide",
       title: "Bespoke Kaftan in Lagos: The No-Nonsense Guide",
       category: "Fabrics & Craft",
-      image: "assets/blog/bespoke-kaftan-lagos-guide.png",
+      image: "assets/blog/bespoke-kaftan-lagos-guide.jpg",
       excerpt: "Measurements, fabrics, a fit checklist and the tailor red flags every man should know."
     },
     {
