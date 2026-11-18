@@ -1274,26 +1274,33 @@ function renderDashboard() {
   }).join("");
 
   const findOrder = (ref) => allOrders.find(x => x.ref === ref);
+  // Changes re-read the latest list first, so an order placed on the website or
+  // a change made on another device since this table was drawn is kept.
+  const updateOrder = (ref, change) => {
+    const latest = JSON.parse(localStorage.getItem("oban-orders")) || [];
+    const order = latest.find(x => x.ref === ref);
+    if (!order || change(order) === false) return;
+    localStorage.setItem("oban-orders", JSON.stringify(latest));
+    renderDashboard();
+  };
 
   ordersTableBody.querySelectorAll(".stage-select").forEach((select) => {
     select.onchange = (e) => {
-      const order = findOrder(e.currentTarget.dataset.ref);
       const newStage = +e.currentTarget.value;
-      if (!order || Number(order.currentStage) === newStage) return;
-      order.currentStage = newStage;
-      localStorage.setItem("oban-orders", JSON.stringify(allOrders));
-      renderDashboard();
+      updateOrder(e.currentTarget.dataset.ref, (order) => {
+        if (Number(order.currentStage) === newStage) return false;
+        order.currentStage = newStage;
+      });
     };
   });
 
   ordersTableBody.querySelectorAll(".payment-pct-select").forEach((select) => {
     select.onchange = (e) => {
-      const order = findOrder(e.currentTarget.dataset.ref);
       const newPct = +e.currentTarget.value;
-      if (!order || order.paymentPercentage === newPct) return;
-      order.paymentPercentage = newPct;
-      localStorage.setItem("oban-orders", JSON.stringify(allOrders));
-      renderDashboard();
+      updateOrder(e.currentTarget.dataset.ref, (order) => {
+        if (order.paymentPercentage === newPct) return false;
+        order.paymentPercentage = newPct;
+      });
     };
   });
 
@@ -1817,7 +1824,7 @@ function renderInventory() {
       const item = list.find(p => (p.code || "").toUpperCase() === code);
       if (!item) return;
       
-      document.querySelector("#editIndex").value = item.code || idx;
+      document.querySelector("#editIndex").value = item.code || "";
       document.querySelector("#editCode").value = item.code || "";
       document.querySelector("#editName").value = item.name || "";
       document.querySelector("#editPrice").value = item.price || 0;
@@ -2020,23 +2027,26 @@ if (editInventoryForm) {
       itemRef.images = imagesList;
       
       // ---- Position Reorder Logic ----
+      // Work from the order the table and the website show (sortCatalog), not
+      // the order this browser happens to hold, so a move gives the same result
+      // on every computer. The whole collection is then renumbered 1, 2, 3...
       const positionInput = document.querySelector("#editMovePosition");
       const targetPos = positionInput ? parseInt(positionInput.value.trim(), 10) : NaN;
       if (!isNaN(targetPos) && targetPos >= 1) {
-        const category = itemRef.category || "";
-        const catItems = list.filter(p => (p.category || "") === category);
-        const catIdx = catItems.findIndex(p => (p.code || "").toUpperCase() === codeVal);
+        sortCatalog(list);
+        const category = normalizeCategory(itemRef.category || "");
+        const catItems = list.filter(p => p.category === category);
+        const catIdx = catItems.indexOf(itemRef);
         if (catIdx !== -1) {
-          const [garment] = catItems.splice(catIdx, 1);
-          const insertAt = Math.min(targetPos - 1, catItems.length);
-          catItems.splice(insertAt, 0, garment);
+          catItems.splice(catIdx, 1);
+          catItems.splice(Math.min(targetPos - 1, catItems.length), 0, itemRef);
         }
         catItems.forEach((p, posIdx) => {
           p.position = posIdx + 1;
         });
       }
-      
-      localStorage.setItem("oban-products", JSON.stringify(list));
+
+      localStorage.setItem("oban-products", JSON.stringify(sortCatalog(list)));
       
       if (editInventoryDialog) editInventoryDialog.close();
       renderInventory();
@@ -2094,7 +2104,8 @@ function renderBlogFeed() {
     return;
   }
 
-  articlesTableBody.innerHTML = list.map((art, idx) => {
+  articlesTableBody.innerHTML = list.map((art) => {
+    const key = escapeHtml(art.id || art.filename || "");
     const thumb = art.image
       ? `<img class="thumb" src="${escapeHtml(art.image)}" alt="" loading="lazy">`
       : `<span class="thumb thumb-empty">${ICON("image")}</span>`;
@@ -2106,22 +2117,25 @@ function renderBlogFeed() {
         <td class="nowrap">${escapeHtml(art.author)}</td>
         <td>
           <div class="acts">
-            <button type="button" class="act edit-art-btn" data-index="${idx}" title="Edit article" aria-label="Edit article">${ICON("edit")}</button>
+            <button type="button" class="act edit-art-btn" data-key="${key}" title="Edit article" aria-label="Edit article">${ICON("edit")}</button>
             <button type="button" class="act copy-art-link-btn" data-filename="${escapeHtml(art.filename || "")}" data-id="${escapeHtml(art.id || "")}" data-title="${escapeHtml(art.title)}" title="Copy link to this article" aria-label="Copy link">${ICON("link")}</button>
-            <button type="button" class="act act-danger delete-art-btn" data-index="${idx}" title="Delete article" aria-label="Delete article">${ICON("trash")}</button>
+            <button type="button" class="act act-danger delete-art-btn" data-key="${key}" title="Delete article" aria-label="Delete article">${ICON("trash")}</button>
           </div>
         </td>
       </tr>`;
   }).join("");
 
+  // Articles are found by id (filename for the original posts), never by row
+  // number: another computer may add or remove articles while this one is open.
   // Bind Edit buttons
   articlesTableBody.querySelectorAll(".edit-art-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.currentTarget.dataset.index;
+      const key = e.currentTarget.dataset.key;
       const list = JSON.parse(localStorage.getItem("oban-blog-articles")) || [];
-      const art = list[idx];
-      
-      document.querySelector("#articleEditId").value = idx;
+      const art = list.find(a => (a.id || a.filename || "") === key);
+      if (!art) return alert("This article was changed or removed on another device. The list has been refreshed.");
+
+      document.querySelector("#articleEditId").value = key;
       document.querySelector("#artTitle").value = art.title;
       document.querySelector("#artCategory").value = art.category;
       document.querySelector("#artExcerpt").value = art.excerpt;
@@ -2137,11 +2151,14 @@ function renderBlogFeed() {
   // Bind Delete buttons
   articlesTableBody.querySelectorAll(".delete-art-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.currentTarget.dataset.index;
+      const key = e.currentTarget.dataset.key;
       if (confirm("Delete this article forever?")) {
         const list = JSON.parse(localStorage.getItem("oban-blog-articles")) || [];
-        list.splice(idx, 1);
-        localStorage.setItem("oban-blog-articles", JSON.stringify(list));
+        const idx = list.findIndex(a => (a.id || a.filename || "") === key);
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          localStorage.setItem("oban-blog-articles", JSON.stringify(list));
+        }
         renderBlogFeed();
       }
     };
@@ -2197,14 +2214,21 @@ if (blogArticleForm) {
     const filename = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.html';
 
     if (editId !== "") {
-      const idx = +editId;
-      list[idx].title = title;
-      list[idx].category = category;
-      list[idx].excerpt = excerpt;
-      list[idx].author = author;
-      list[idx].content = content;
-      list[idx].image = image;
-      list[idx].filename = filename;
+      const art = list.find(a => (a.id || a.filename || "") === editId);
+      if (!art) {
+        alert("This article was removed on another device, so the changes could not be applied.");
+        resetBlogForm();
+        renderBlogFeed();
+        return;
+      }
+      art.title = title;
+      art.category = category;
+      art.excerpt = excerpt;
+      art.author = author;
+      art.content = content;
+      art.image = image;
+      // Keep the existing page address so links already shared keep working.
+      if (!art.filename) art.filename = filename;
       alert("Article updated successfully!");
     } else {
       const newArt = {
@@ -2273,7 +2297,7 @@ function renderVendors() {
     return;
   }
 
-  vendorsTableBody.innerHTML = list.map((v, idx) => {
+  vendorsTableBody.innerHTML = list.map((v) => {
     return `
       <tr>
         <td><span class="cell-main">${escapeHtml(v.name)}</span></td>
@@ -2283,7 +2307,7 @@ function renderVendors() {
         <td><div class="clip">${escapeHtml(v.address)}</div></td>
         <td><span class="badge badge-plain">${escapeHtml(v.currency)}</span></td>
         <td>
-          <button type="button" class="act act-danger delete-vendor-btn" data-index="${idx}" title="Remove vendor" aria-label="Remove vendor">${ICON("trash")}</button>
+          <button type="button" class="act act-danger delete-vendor-btn" data-key="${escapeHtml(v.id || v.name || "")}" title="Remove vendor" aria-label="Remove vendor">${ICON("trash")}</button>
         </td>
       </tr>
     `;
@@ -2291,11 +2315,14 @@ function renderVendors() {
 
   vendorsTableBody.querySelectorAll(".delete-vendor-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.currentTarget.dataset.index;
+      const key = e.currentTarget.dataset.key;
       if (confirm("Remove this supplier from registry?")) {
         const list = JSON.parse(localStorage.getItem("oban-vendors")) || [];
-        list.splice(idx, 1);
-        localStorage.setItem("oban-vendors", JSON.stringify(list));
+        const idx = list.findIndex(v => (v.id || v.name || "") === key);
+        if (idx !== -1) {
+          list.splice(idx, 1);
+          localStorage.setItem("oban-vendors", JSON.stringify(list));
+        }
         renderVendors();
       }
     };
@@ -2319,7 +2346,7 @@ function renderPurchaseOrdersList() {
     
     let actions = "";
     if (po.status === "Pending") {
-      actions += `<button type="button" class="act act-text receive-po-btn" data-index="${idx}">${ICON("inbox")}Mark received</button>`;
+      actions += `<button type="button" class="act act-text receive-po-btn" data-id="${escapeHtml(po.id)}">${ICON("inbox")}Mark received</button>`;
     } else {
       actions += `<span class="badge badge-ok">Completed</span>`;
     }
@@ -2370,10 +2397,11 @@ function renderPurchaseOrdersList() {
   // Bind Acknowledge Receive
   poTableBody.querySelectorAll(".receive-po-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.currentTarget.dataset.index;
+      const id = e.currentTarget.dataset.id;
       const list = JSON.parse(localStorage.getItem("oban-purchase-orders")) || [];
-      const poObj = list[idx];
-      
+      const poObj = list.find(x => x.id === id);
+      if (!poObj) return renderPurchaseOrdersList();
+
       poObj.status = "Received";
       localStorage.setItem("oban-purchase-orders", JSON.stringify(list));
 
@@ -2437,7 +2465,7 @@ function renderBillsList() {
   billsTableBody.innerHTML = list.map((bill, idx) => {
     const isPaid = bill.status === "Paid";
     const amountStr = "\u20A6" + Number(bill.amount).toLocaleString();
-    const action = isPaid ? `<span class="badge badge-ok">Settled</span>` : `<button type="button" class="act act-text pay-bill-btn" data-index="${idx}">${ICON("wallet")}Record payment</button>`;
+    const action = isPaid ? `<span class="badge badge-ok">Settled</span>` : `<button type="button" class="act act-text pay-bill-btn" data-id="${escapeHtml(bill.id)}">${ICON("wallet")}Record payment</button>`;
 
     return `
       <tr>
@@ -2454,10 +2482,11 @@ function renderBillsList() {
 
   billsTableBody.querySelectorAll(".pay-bill-btn").forEach(btn => {
     btn.onclick = (e) => {
-      const idx = +e.currentTarget.dataset.index;
+      const id = e.currentTarget.dataset.id;
       const list = JSON.parse(localStorage.getItem("oban-bills")) || [];
-      const bill = list[idx];
-      
+      const bill = list.find(x => x.id === id);
+      if (!bill) return renderBillsList();
+
       bill.status = "Paid";
       localStorage.setItem("oban-bills", JSON.stringify(list));
 

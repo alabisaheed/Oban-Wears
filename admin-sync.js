@@ -288,11 +288,29 @@
     flushTimer = setTimeout(flushChanges, 300);
   }
 
+  // Until the first copy has arrived from the server, the screen may still
+  // show this browser's old copy, and a change made now could not be compared
+  // with the server or saved. Refuse it out loud instead of losing it.
+  // (Active from page start-up, after admin.js has filled empty caches.)
+  let guardEdits = false;
+  let lastRefusal = 0;
+  function refuseUntilLoaded(key) {
+    if (!guardEdits || applyingRemote || !SYNCED_KEYS[key] || !token() || syncReady) return false;
+    if (Date.now() - lastRefusal > 2000) {
+      lastRefusal = Date.now();
+      alert("The dashboard is still loading the latest data from the server, so this change was not saved. Wait until the top of the page says \"All changes saved\", then try again.");
+    }
+    setTimeout(() => render(RENDERERS[key] || []), 0);
+    return true;
+  }
+
   Storage.prototype.setItem = function (key, value) {
+    if (this === ls && refuseUntilLoaded(key)) return;
     nativeSetItem.call(this, key, value);
     if (this === ls && SYNCED_KEYS[key] && !applyingRemote) markDirty(key);
   };
   Storage.prototype.removeItem = function (key) {
+    if (this === ls && refuseUntilLoaded(key)) return;
     nativeRemoveItem.call(this, key);
     if (this === ls && SYNCED_KEYS[key] && !applyingRemote) markDirty(key);
   };
@@ -315,15 +333,36 @@
         continue;
       }
       const local = localRecords(lsKey);
-      const upsert = {};
+      const upsert = {}; // new records: sent whole
+      const patch = {};  // existing records: only the fields this browser changed
+      const sent = {};   // what each changed record looked like here when sent
       const remove = [];
       local.forEach((record, key) => {
-        if (known.get(key) !== canonicalJson(record)) upsert[key] = record;
+        const json = canonicalJson(record);
+        const knownJson = known.get(key);
+        if (knownJson === json) return;
+        sent[key] = json;
+        if (knownJson === undefined) {
+          upsert[key] = record;
+          return;
+        }
+        // Sending whole records would overwrite fields another computer changed
+        // since this one last pulled (a move renumbers a whole collection, for
+        // example). The server merges these fields into its current copy.
+        const before = JSON.parse(knownJson);
+        const after = canonical(record, true) || {};
+        const set = {};
+        const unset = [];
+        Object.keys(after).forEach((f) => {
+          if (JSON.stringify(after[f]) !== JSON.stringify(before[f])) set[f] = record[f];
+        });
+        Object.keys(before).forEach((f) => { if (!(f in after)) unset.push(f); });
+        if (Object.keys(set).length || unset.length) patch[key] = { set, unset };
       });
       known.forEach((json, key) => {
         if (!local.has(key)) remove.push(key);
       });
-      if (!Object.keys(upsert).length && !remove.length) continue;
+      if (!Object.keys(upsert).length && !Object.keys(patch).length && !remove.length) continue;
 
       // Guard against a cleared or broken browser copy deleting many records.
       if (remove.length > 3 && remove.length > known.size * 0.25 &&
@@ -333,22 +372,43 @@
         writeLocal(lsKey, restored);
         render(RENDERERS[lsKey] || []);
         remove.length = 0;
-        if (!Object.keys(upsert).length) continue;
+        if (!Object.keys(upsert).length && !Object.keys(patch).length) continue;
       }
 
       try {
-        const upsertKeys = Object.keys(upsert);
+        const changedKeys = [...Object.keys(upsert), ...Object.keys(patch)];
         const BATCH = 200;
         const next = new Map(serverState[lsKey] || known);
-        for (let i = 0; i < Math.max(upsertKeys.length, remove.length); i += BATCH) {
-          const part = Object.fromEntries(upsertKeys.slice(i, i + BATCH).map((k) => [k, upsert[k]]));
+        const merged = {};
+        for (let i = 0; i < Math.max(changedKeys.length, remove.length); i += BATCH) {
+          const keys = changedKeys.slice(i, i + BATCH);
+          const upsertPart = Object.fromEntries(keys.filter((k) => upsert[k]).map((k) => [k, upsert[k]]));
+          const patchPart = Object.fromEntries(keys.filter((k) => patch[k]).map((k) => [k, patch[k]]));
           const removePart = remove.slice(i, i + BATCH);
-          const result = await api("POST", "/api/admin", { c: spec.collection, upsert: part, remove: removePart });
-          Object.entries(result.saved || {}).forEach(([key, record]) => next.set(key, canonicalJson(record)));
+          const result = await api("POST", "/api/admin", { c: spec.collection, upsert: upsertPart, patch: patchPart, remove: removePart });
+          Object.entries(result.saved || {}).forEach(([key, record]) => {
+            next.set(key, canonicalJson(record));
+            merged[key] = record;
+          });
           removePart.forEach((key) => next.delete(key));
           serverState[lsKey] = new Map(next);
         }
         serverState[lsKey] = next;
+        // The server's copy may now include other computers' changes to the same
+        // records. Show them here too, unless the record was edited again meanwhile.
+        const current = localRecords(lsKey);
+        let refreshed = false;
+        Object.entries(merged).forEach(([key, record]) => {
+          const mine = current.get(key);
+          if (mine && canonicalJson(mine) === sent[key] && canonicalJson(record) !== sent[key]) {
+            current.set(key, record);
+            refreshed = true;
+          }
+        });
+        if (refreshed) {
+          writeLocal(lsKey, Object.fromEntries(current));
+          render(RENDERERS[lsKey] || []);
+        }
       } catch (err) {
         console.warn(`Could not save ${spec.collection}:`, err);
         if (err.status === 401) break;
@@ -1005,6 +1065,7 @@
   }
 
   function init() {
+    guardEdits = true;
     LEGACY_KEYS.forEach(removeRaw);
     try { sessionStorage.removeItem("oban-admin-password"); } catch (e) {}
     bindSignIn();

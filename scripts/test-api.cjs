@@ -136,6 +136,22 @@ server.listen(0, async () => {
     } } });
     check("new arrangement shows on the website", (await call("/api/products")).body.map((p) => p.code).join() === "OB-KF01,OB-KF02,OB-AG01");
 
+    // ---- Two computers: B changes a price, A (not yet refreshed) moves garments.
+    // A sends only the fields it changed, so B's price is kept.
+    await call("/api/admin", { method: "POST", token: admin, body: { c: "products", upsert: {
+      "OB-KF02": { ...full.body.changes.products.upsert["OB-KF02"], position: 2, price: 181000 }
+    } } });
+    const moved = await call("/api/admin", { method: "POST", token: admin, body: { c: "products", patch: {
+      "OB-KF01": { set: { position: 2 }, unset: [] },
+      "OB-KF02": { set: { position: 1 }, unset: [] }
+    } } });
+    const afterMove = (await call("/api/products")).body;
+    check("a move only changes positions", moved.status === 200 && afterMove.map((p) => p.code).join() === "OB-KF02,OB-KF01,OB-AG01", afterMove.map((p) => p.code));
+    check("another computer's price change survives the move", afterMove.find((p) => p.code === "OB-KF02").price === 181000, afterMove.find((p) => p.code === "OB-KF02"));
+    check("a patch returns the merged record", moved.body.saved["OB-KF02"].price === 181000 && moved.body.saved["OB-KF02"].name === "OB-KF02", moved.body.saved);
+    const ghost = await call("/api/admin", { method: "POST", token: admin, body: { c: "products", patch: { "OB-GONE": { set: { position: 9 } } } } });
+    check("a patch never creates a deleted or unknown record", ghost.status === 200 && !ghost.body.saved["OB-GONE"], ghost.body);
+
     // ---- New product with an uploaded image; delete leaves a tombstone
     const img = "data:image/png;base64," + fs.readFileSync(path.join(ROOT, "assets", "oban-favicon.png")).toString("base64");
     const add = await call("/api/admin", { method: "POST", token: admin, body: { c: "products", upsert: { "OB-SP01": { code: "OB-SP01", name: "Suit 1", category: "Suits & Pants", price: 90000, images: [img] } } } });

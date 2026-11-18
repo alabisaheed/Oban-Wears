@@ -40,6 +40,8 @@ const CAN_DELETE = {
 };
 const MAX_RECORDS_PER_WRITE = 300;
 const SECRET_FIELDS = ["passwordHash", "pinHash", "pin"];
+// Bookkeeping the server sets itself; a patch cannot change these.
+const SERVER_FIELDS = ["updatedAt", "updatedBy", "importedAt", "recoveredFrom"];
 
 function stripSecrets(record) {
   const copy = { ...record };
@@ -174,15 +176,38 @@ module.exports = handler({
     if (!allowed(collection, user)) throw new HttpError(403, "Your role does not allow this action");
 
     const upsert = body.upsert && typeof body.upsert === "object" ? body.upsert : {};
+    const patch = body.patch && typeof body.patch === "object" && !Array.isArray(body.patch) ? body.patch : {};
     const remove = Array.isArray(body.remove) ? body.remove.map(String).filter(Boolean) : [];
-    if (Object.keys(upsert).length + remove.length > MAX_RECORDS_PER_WRITE) throw new HttpError(413, "Too many records in one save");
+    if (Object.keys(upsert).length + Object.keys(patch).length + remove.length > MAX_RECORDS_PER_WRITE) throw new HttpError(413, "Too many records in one save");
     if (remove.length && CAN_DELETE[collection] && !CAN_DELETE[collection].includes(user.role)) {
       throw new HttpError(403, `Your role cannot delete ${collection}`);
     }
 
+    // Field-level changes are merged into the server's current copy, so two
+    // computers editing different fields of the same record never undo each
+    // other. A record deleted elsewhere is not brought back by a patch.
+    const incoming = { ...upsert };
+    const patchKeys = Object.keys(patch).filter(Boolean);
+    const existingPatched = await Promise.all(patchKeys.map((key) => db.get(collection, key)));
+    patchKeys.forEach((key, i) => {
+      const p = patch[key];
+      const existing = existingPatched[i];
+      if (!existing || !p || typeof p !== "object") return;
+      const merged = { ...existing };
+      if (p.set && typeof p.set === "object") {
+        Object.entries(p.set).forEach(([field, value]) => {
+          if (!SECRET_FIELDS.includes(field) && !SERVER_FIELDS.includes(field)) merged[field] = value;
+        });
+      }
+      (Array.isArray(p.unset) ? p.unset : []).forEach((field) => {
+        if (!SECRET_FIELDS.includes(field) && !SERVER_FIELDS.includes(field)) delete merged[field];
+      });
+      incoming[key] = merged;
+    });
+
     const images = [];
     const records = {};
-    for (const [key, raw] of Object.entries(upsert)) {
+    for (const [key, raw] of Object.entries(incoming)) {
       if (!key || !raw || typeof raw !== "object" || Array.isArray(raw)) continue;
       const record = prepare(collection, key, raw, user, images);
       if (collection === "profiles") {
