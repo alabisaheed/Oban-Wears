@@ -41,6 +41,18 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "dashboard.obanwears.com" }],
+      "destination": "/admin",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.dashboard.obanwears.com" }],
+      "destination": "https://dashboard.obanwears.com/admin",
+      "permanent": false
+    },
+    {
       "source": "/cpanel",
       "destination": "https://mail.obanwears.com:2083",
       "permanent": false
